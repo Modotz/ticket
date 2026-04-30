@@ -1,0 +1,61 @@
+<div class="row justify-content-center">
+  <div class="col-md-8">
+    <div class="card card-primary shadow">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-plus-circle mr-2"></i>Buat Tiket Kendala Baru</h3>
+      </div>
+      <form action="/tickets" method="POST">
+        <div class="card-body">
+
+          <div class="form-group">
+            <label class="font-weight-bold">Judul Kendala <span class="text-danger">*</span></label>
+            <input type="text" name="title" class="form-control"
+                   placeholder="Contoh: Kendala Aplikasi ERP" required maxlength="200">
+            <small class="text-muted">Deskripsikan kendala secara singkat dan jelas</small>
+          </div>
+
+          <div class="form-group">
+            <label class="font-weight-bold">Deskripsi Lengkap <span class="text-danger">*</span></label>
+            <textarea name="description" class="form-control" rows="6"
+                      placeholder="Jelaskan kendala secara detail: gejala yang dialami, kapan terjadi, dampak yang ditimbulkan, dll." required></textarea>
+          </div>
+
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label class="font-weight-bold">Kategori <span class="text-danger">*</span></label>
+                <select name="category" class="form-control" required>
+                  <option value="">-- Pilih Kategori --</option>
+                  <% categories.forEach(cat => { %>
+                  <option value="<%= cat %>"><%= cat %></option>
+                  <% }) %>
+                </select>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-group">
+                <label class="font-weight-bold">Prioritas <span class="text-danger">*</span></label>
+                <select name="priority" class="form-control" required>
+                  <option value="low">🟢 Low — Tidak Mendesak</option>
+                  <option value="medium" selected>🟡 Medium — Perlu Ditangani</option>
+                  <option value="high">🟠 High — Segera Tangani</option>
+                  <option value="critical">🔴 Critical — DARURAT!</option>
+                </select>
+                <small class="text-muted">Pilih sesuai tingkat urgensi</small>
+              </div>
+            </div>
+          </div>
+
+        </div>
+        <div class="card-footer d-flex justify-content-between">
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-paper-plane mr-1"></i> Kirim Tiket
+          </button>
+          <a href="/tickets" class="btn btn-secondary">
+            <i class="fas fa-times mr-1"></i> Batal
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,379 @@
+<%
+const sClass = {open:'secondary',assigned:'info',in_progress:'primary',resolved:'success',closed:'dark'};
+const pClass = {low:'secondary',medium:'info',high:'warning',critical:'danger'};
+%>
+
+<div class="row">
+  <!-- Kolom Kiri: Detail Tiket + Komentar -->
+  <div class="col-lg-8">
+
+    <!-- Detail Tiket -->
+    <div class="card card-outline card-primary shadow-sm">
+      <div class="card-header">
+        <h3 class="card-title">
+          <code class="text-primary mr-2"><%= ticket.ticket_number %></code>
+          <span class="badge badge-<%= pClass[ticket.priority] %>"><%= ticket.priority.toUpperCase() %></span>
+          <span class="badge badge-<%= sClass[ticket.status] %> ml-1"><%= ticket.status.replace('_',' ').toUpperCase() %></span>
+        </h3>
+        <div class="card-tools">
+          <% if (user.role === 'admin') { %>
+          <a href="/tickets/<%= ticket.id %>/edit" class="btn btn-sm btn-warning">
+            <i class="fas fa-edit mr-1"></i> Edit
+          </a>
+          <% } %>
+        </div>
+      </div>
+      <div class="card-body">
+        <h5 class="font-weight-bold mb-3"><%= ticket.title %></h5>
+        <div class="p-3 bg-light rounded mb-3" style="white-space: pre-wrap"><%= ticket.description %></div>
+
+        <% if (ticket.notes) { %>
+        <div class="callout callout-info">
+          <h6><i class="fas fa-sticky-note mr-1"></i><strong>Catatan Teknisi:</strong></h6>
+          <p class="mb-0"><%= ticket.notes %></p>
+        </div>
+        <% } %>
+
+        <div class="row mt-3">
+          <div class="col-6 col-md-3 mb-3">
+            <small class="text-muted d-block">Kategori</small>
+            <span class="badge badge-light border font-weight-bold"><%= ticket.category %></span>
+          </div>
+          <div class="col-6 col-md-3 mb-3">
+            <small class="text-muted d-block">Dibuat Oleh</small>
+            <strong><%= ticket.creator_name %></strong>
+          </div>
+          <div class="col-6 col-md-3 mb-3">
+            <small class="text-muted d-block">Teknisi</small>
+            <strong><% if (ticket.assignee_name) { %><%= ticket.assignee_name %><% } else { %><span class="text-muted font-weight-normal">Belum ditugaskan</span><% } %></strong>
+          </div>
+          <div class="col-6 col-md-3 mb-3">
+            <small class="text-muted d-block">Tanggal Dibuat</small>
+            <strong><%= new Date(ticket.created_at).toLocaleString('id-ID') %></strong>
+          </div>
+          <% if (ticket.resolved_at) { %>
+          <div class="col-6 col-md-3 mb-3">
+            <small class="text-muted d-block">Diselesaikan</small>
+            <strong class="text-success"><%= new Date(ticket.resolved_at).toLocaleString('id-ID') %></strong>
+          </div>
+          <% } %>
+          <div class="col-6 col-md-3 mb-3">
+            <small class="text-muted d-block">Terakhir Diperbarui</small>
+            <strong><%= new Date(ticket.updated_at).toLocaleString('id-ID') %></strong>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Komentar -->
+    <div class="card shadow-sm">
+      <div class="card-header">
+        <h3 class="card-title">
+          <i class="fas fa-comments text-info mr-2"></i>Diskusi &amp; Update
+          <span class="badge badge-info ml-1"><%= comments.length %></span>
+        </h3>
+      </div>
+      <div class="card-body">
+        <% if (comments.length === 0) { %>
+        <p class="text-center text-muted py-2">
+          <i class="fas fa-comment-slash mr-1"></i> Belum ada komentar
+        </p>
+        <% } %>
+
+        <% comments.forEach(comment => { %>
+        <div class="ticket-comment <%= comment.user_id === user.id ? 'own' : '' %> mb-3">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <div>
+              <strong><%= comment.user_name %></strong>
+              <span class="badge badge-<%= comment.user_role === 'admin' ? 'danger' : comment.user_role === 'technician' ? 'info' : 'success' %> badge-sm ml-1">
+                <%= comment.user_role %>
+              </span>
+              <% if (comment.user_id === user.id) { %>
+              <span class="badge badge-light text-muted">Anda</span>
+              <% } %>
+            </div>
+            <small class="text-muted"><%= new Date(comment.created_at).toLocaleString('id-ID') %></small>
+          </div>
+          <p class="mb-0" style="white-space:pre-wrap"><%= comment.comment %></p>
+        </div>
+        <% }) %>
+
+        <% if (ticket.status !== 'closed') { %>
+        <hr>
+        <form action="/tickets/<%= ticket.id %>/comments" method="POST">
+          <div class="form-group mb-2">
+            <label class="font-weight-bold"><i class="fas fa-reply mr-1 text-primary"></i>Tambah Komentar</label>
+            <textarea name="comment" class="form-control" rows="3"
+                      placeholder="Tulis update atau pertanyaan..." required></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm">
+            <i class="fas fa-paper-plane mr-1"></i> Kirim
+          </button>
+        </form>
+        <% } else { %>
+        <div class="alert alert-secondary mt-3 mb-0">
+          <i class="fas fa-lock mr-1"></i> Tiket ini sudah ditutup. Komentar baru tidak dapat ditambahkan.
+        </div>
+        <% } %>
+      </div>
+    </div>
+
+    <!-- Lampiran -->
+    <div class="card shadow-sm">
+      <div class="card-header">
+        <h3 class="card-title">
+          <i class="fas fa-paperclip text-warning mr-2"></i>Lampiran
+          <span class="badge badge-warning ml-1"><%= attachments.length %></span>
+        </h3>
+      </div>
+      <div class="card-body">
+
+        <% if (attachments.length === 0) { %>
+        <p class="text-center text-muted py-1">
+          <i class="fas fa-folder-open mr-1"></i> Belum ada lampiran
+        </p>
+        <% } else { %>
+
+        <!-- Grid lampiran -->
+        <div class="row">
+          <% attachments.forEach(att => { %>
+          <% const fi = fileIcon(att.mime_type); %>
+          <div class="col-6 col-md-4 mb-3">
+            <div class="card border h-100 mb-0" style="overflow:hidden;">
+
+              <% if (isImage(att.mime_type)) { %>
+              <!-- Thumbnail gambar — klik buka modal -->
+              <div class="att-img-wrap" style="height:120px; overflow:hidden; cursor:pointer; background:#f4f4f4;"
+                   onclick="openImageModal('/uploads/<%= att.filename %>', '<%= att.original_name %>', '<%= att.id %>', '<%= ticket.id %>', <%= (user.role === 'admin' || att.user_id === user.id) ? 'true' : 'false' %>, '/uploads/<%= att.filename %>')">
+                <img src="/uploads/<%= att.filename %>"
+                     style="width:100%; height:120px; object-fit:cover;"
+                     alt="<%= att.original_name %>"
+                     onerror="this.parentElement.innerHTML='<div style=\'height:120px;display:flex;align-items:center;justify-content:center;color:#aaa\'><i class=\'fas fa-image fa-2x\'></i></div>'">
+              </div>
+              <% } else { %>
+              <!-- Ikon file -->
+              <div class="d-flex align-items-center justify-content-center" style="height:80px; background:#f8f9fa;">
+                <i class="fas <%= fi.icon %> fa-3x <%= fi.color %>"></i>
+              </div>
+              <% } %>
+
+              <div class="p-2">
+                <div class="small font-weight-bold text-truncate" title="<%= att.original_name %>">
+                  <%= att.original_name %>
+                </div>
+                <div class="text-muted" style="font-size:0.68rem;">
+                  <%= formatBytes(att.file_size) %> &bull; <%= att.uploader_name %>
+                </div>
+                <div class="mt-1 d-flex" style="gap:4px;">
+                  <a href="/uploads/<%= att.filename %>" download="<%= att.original_name %>"
+                     class="btn btn-xs btn-outline-secondary flex-fill" title="Download">
+                    <i class="fas fa-download"></i> Unduh
+                  </a>
+                  <% if (user.role === 'admin' || att.user_id === user.id) { %>
+                  <form action="/tickets/<%= ticket.id %>/attachments/<%= att.id %>?_method=DELETE" method="POST"
+                        onsubmit="return confirm('Hapus lampiran ini?')" class="d-inline">
+                    <button type="submit" class="btn btn-xs btn-outline-danger" title="Hapus">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </form>
+                  <% } %>
+                </div>
+              </div>
+
+            </div>
+          </div>
+          <% }) %>
+        </div>
+
+        <!-- Modal preview gambar -->
+        <div class="modal fade" id="imgModal" tabindex="-1">
+          <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+              <div class="modal-header py-2">
+                <h6 class="modal-title font-weight-bold" id="imgModalTitle"></h6>
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+              </div>
+              <div class="modal-body p-0 text-center bg-dark">
+                <img id="imgModalSrc" src="" alt="" style="max-width:100%; max-height:75vh; object-fit:contain;">
+              </div>
+              <div class="modal-footer py-2 d-flex justify-content-between">
+                <a id="imgModalDownload" href="#" download class="btn btn-sm btn-secondary">
+                  <i class="fas fa-download mr-1"></i> Unduh
+                </a>
+                <div>
+                  <form id="imgModalDeleteForm" method="POST" class="d-inline"
+                        onsubmit="return confirm('Hapus gambar ini?')">
+                    <button id="imgModalDeleteBtn" type="submit" class="btn btn-sm btn-danger" style="display:none;">
+                      <i class="fas fa-trash mr-1"></i> Hapus
+                    </button>
+                  </form>
+                  <button type="button" class="btn btn-sm btn-light ml-1" data-dismiss="modal">Tutup</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <% } %>
+
+        <!-- Form Upload -->
+        <% if (ticket.status !== 'closed') { %>
+        <hr>
+        <form action="/tickets/<%= ticket.id %>/attachments" method="POST" enctype="multipart/form-data">
+          <label class="font-weight-bold small">
+            <i class="fas fa-upload mr-1 text-warning"></i>Upload File / Gambar
+          </label>
+          <div class="custom-file mb-2">
+            <input type="file" class="custom-file-input" id="fileUpload" name="files"
+                   multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
+                   onchange="updateFileLabel(this)">
+            <label class="custom-file-label text-truncate" for="fileUpload">Pilih file...</label>
+          </div>
+          <small class="text-muted d-block mb-2">
+            Maks 10MB/file &bull; Bisa pilih beberapa file &bull; Format: JPG, PNG, GIF, WEBP, PDF, DOC, XLS, TXT, ZIP
+          </small>
+          <button type="submit" class="btn btn-warning btn-sm">
+            <i class="fas fa-cloud-upload-alt mr-1"></i> Upload
+          </button>
+        </form>
+        <% } else { %>
+        <div class="alert alert-secondary mt-2 mb-0 small">
+          <i class="fas fa-lock mr-1"></i> Tiket ditutup — upload tidak tersedia
+        </div>
+        <% } %>
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Kolom Kanan: Actions -->
+  <div class="col-lg-4">
+
+    <!-- Tugaskan Tiket (Admin only) -->
+    <% if (user.role === 'admin') { %>
+    <div class="card card-warning card-outline shadow-sm">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-user-tag mr-2"></i>Tugaskan Tiket</h3>
+      </div>
+      <div class="card-body">
+        <form action="/tickets/<%= ticket.id %>/assign" method="POST">
+          <div class="form-group">
+            <label class="small font-weight-bold">Pilih Teknisi</label>
+            <select name="assigned_to" class="form-control form-control-sm">
+              <option value="">— Hapus Penugasan —</option>
+              <% technicians.forEach(tech => { %>
+              <option value="<%= tech.id %>" <%= ticket.assigned_to === tech.id ? 'selected' : '' %>>
+                <%= tech.name %>
+              </option>
+              <% }) %>
+            </select>
+            <% if (technicians.length === 0) { %>
+            <small class="text-warning"><i class="fas fa-exclamation-triangle mr-1"></i>Belum ada teknisi terdaftar</small>
+            <% } %>
+          </div>
+          <button type="submit" class="btn btn-warning btn-sm btn-block">
+            <i class="fas fa-user-check mr-1"></i> Tugaskan
+          </button>
+        </form>
+      </div>
+    </div>
+    <% } %>
+
+    <!-- Update Status -->
+    <div class="card card-info card-outline shadow-sm">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-sync-alt mr-2"></i>Update Status</h3>
+      </div>
+      <div class="card-body">
+        <div class="mb-3">
+          <small class="text-muted">Status saat ini:</small><br>
+          <span class="badge badge-<%= sClass[ticket.status] %> badge-lg px-3 py-2" style="font-size:0.85rem;">
+            <%= ticket.status.replace('_',' ').toUpperCase() %>
+          </span>
+        </div>
+        <% if (ticket.status !== 'closed') { %>
+        <form action="/tickets/<%= ticket.id %>/status" method="POST">
+          <div class="form-group">
+            <label class="small font-weight-bold">Ubah ke Status</label>
+            <select name="status" class="form-control form-control-sm">
+              <% if (user.role === 'admin') { %>
+                <% ['open','assigned','in_progress','resolved','closed'].forEach(s => { %>
+                <option value="<%= s %>" <%= ticket.status === s ? 'selected' : '' %>><%= s.replace('_',' ').toUpperCase() %></option>
+                <% }) %>
+              <% } else if (user.role === 'technician') { %>
+                <option value="in_progress" <%= ticket.status === 'in_progress' ? 'selected' : '' %>>IN PROGRESS</option>
+                <option value="resolved" <%= ticket.status === 'resolved' ? 'selected' : '' %>>RESOLVED</option>
+              <% } else if (user.role === 'reporter') { %>
+                <option value="closed">CLOSED (Tutup Tiket)</option>
+              <% } %>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-info btn-sm btn-block">
+            <i class="fas fa-save mr-1"></i> Update Status
+          </button>
+        </form>
+        <% } else { %>
+        <p class="text-muted small mb-0"><i class="fas fa-lock mr-1"></i>Tiket sudah ditutup</p>
+        <% } %>
+      </div>
+    </div>
+
+    <!-- Hapus Tiket (Admin only) -->
+    <% if (user.role === 'admin') { %>
+    <div class="card card-danger card-outline shadow-sm">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-exclamation-triangle mr-2"></i>Zona Berbahaya</h3>
+      </div>
+      <div class="card-body">
+        <form action="/tickets/<%= ticket.id %>?_method=DELETE" method="POST"
+              onsubmit="return confirm('Hapus tiket <%= ticket.ticket_number %>? Tindakan ini tidak dapat dibatalkan!')">
+          <button type="submit" class="btn btn-danger btn-sm btn-block">
+            <i class="fas fa-trash mr-1"></i> Hapus Tiket Permanen
+          </button>
+        </form>
+      </div>
+    </div>
+    <% } %>
+
+    <!-- Back button -->
+    <a href="/tickets" class="btn btn-secondary btn-block">
+      <i class="fas fa-arrow-left mr-1"></i> Kembali ke Daftar
+    </a>
+
+  </div>
+</div>
+
+<script>
+function updateFileLabel(input) {
+  const label = input.nextElementSibling;
+  if (input.files.length === 0) {
+    label.textContent = 'Pilih file...';
+  } else if (input.files.length === 1) {
+    label.textContent = input.files[0].name;
+  } else {
+    label.textContent = `${input.files.length} file dipilih`;
+  }
+}
+
+function openImageModal(src, name, attachId, ticketId, canDelete, downloadSrc) {
+  document.getElementById('imgModalSrc').src = src;
+  document.getElementById('imgModalSrc').alt = name;
+  document.getElementById('imgModalTitle').textContent = name;
+
+  const dlBtn = document.getElementById('imgModalDownload');
+  dlBtn.href = downloadSrc;
+  dlBtn.download = name;
+
+  const delBtn  = document.getElementById('imgModalDeleteBtn');
+  const delForm = document.getElementById('imgModalDeleteForm');
+  if (canDelete) {
+    delForm.action = `/tickets/${ticketId}/attachments/${attachId}?_method=DELETE`;
+    delBtn.style.display = '';
+  } else {
+    delBtn.style.display = 'none';
+  }
+
+  $('#imgModal').modal('show');
+}
+</script>

@@ -1,0 +1,63 @@
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card card-warning shadow">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-user-edit mr-2"></i>Edit Pengguna: <strong><%= editUser.name %></strong></h3>
+      </div>
+      <form action="/users/<%= editUser.id %>?_method=PUT" method="POST">
+        <div class="card-body">
+
+          <div class="form-group">
+            <label class="font-weight-bold">Username</label>
+            <input type="text" class="form-control bg-light" value="<%= editUser.username %>" disabled>
+            <small class="text-muted">Username tidak dapat diubah</small>
+          </div>
+
+          <div class="form-group">
+            <label class="font-weight-bold">Nama Lengkap <span class="text-danger">*</span></label>
+            <input type="text" name="name" class="form-control" value="<%= editUser.name %>" required maxlength="100">
+          </div>
+
+          <div class="form-group">
+            <label class="font-weight-bold">Email <span class="text-danger">*</span></label>
+            <input type="email" name="email" class="form-control" value="<%= editUser.email %>" required maxlength="100">
+          </div>
+
+          <div class="form-group">
+            <label class="font-weight-bold">Password Baru</label>
+            <input type="password" name="password" class="form-control"
+                   minlength="6" placeholder="Kosongkan jika tidak ingin mengubah password">
+            <small class="text-muted">Isi hanya jika ingin mengganti password</small>
+          </div>
+
+          <div class="form-group">
+            <label class="font-weight-bold">Role <span class="text-danger">*</span></label>
+            <select name="role" class="form-control" required>
+              <option value="reporter"   <%= editUser.role === 'reporter'   ? 'selected' : '' %>>Reporter</option>
+              <option value="technician" <%= editUser.role === 'technician' ? 'selected' : '' %>>Technician</option>
+              <option value="admin"      <%= editUser.role === 'admin'      ? 'selected' : '' %>>Admin</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <div class="custom-control custom-switch">
+              <input type="checkbox" class="custom-control-input" id="is_active" name="is_active"
+                     value="1" <%= editUser.is_active ? 'checked' : '' %>>
+              <label class="custom-control-label font-weight-bold" for="is_active">Akun Aktif</label>
+            </div>
+            <small class="text-muted">Nonaktifkan untuk mencegah login</small>
+          </div>
+
+        </div>
+        <div class="card-footer d-flex justify-content-between">
+          <button type="submit" class="btn btn-warning">
+            <i class="fas fa-save mr-1"></i> Simpan Perubahan
+          </button>
+          <a href="/users" class="btn btn-secondary">
+            <i class="fas fa-arrow-left mr-1"></i> Kembali
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

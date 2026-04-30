@@ -1,0 +1,67 @@
+<div class="row justify-content-center">
+  <div class="col-md-8">
+    <div class="card card-warning shadow">
+      <div class="card-header">
+        <h3 class="card-title">
+          <i class="fas fa-edit mr-2"></i>Edit Tiket
+          <code class="ml-2"><%= ticket.ticket_number %></code>
+        </h3>
+      </div>
+      <form action="/tickets/<%= ticket.id %>?_method=PUT" method="POST">
+        <div class="card-body">
+
+          <div class="form-group">
+            <label class="font-weight-bold">Judul Kendala <span class="text-danger">*</span></label>
+            <input type="text" name="title" class="form-control"
+                   value="<%= ticket.title %>" required maxlength="200">
+          </div>
+
+          <div class="form-group">
+            <label class="font-weight-bold">Deskripsi <span class="text-danger">*</span></label>
+            <textarea name="description" class="form-control" rows="5" required><%= ticket.description %></textarea>
+          </div>
+
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label class="font-weight-bold">Kategori <span class="text-danger">*</span></label>
+                <select name="category" class="form-control" required>
+                  <% categories.forEach(cat => { %>
+                  <option value="<%= cat %>" <%= ticket.category === cat ? 'selected' : '' %>><%= cat %></option>
+                  <% }) %>
+                </select>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-group">
+                <label class="font-weight-bold">Prioritas <span class="text-danger">*</span></label>
+                <select name="priority" class="form-control" required>
+                  <option value="low"      <%= ticket.priority === 'low'      ? 'selected' : '' %>>Low</option>
+                  <option value="medium"   <%= ticket.priority === 'medium'   ? 'selected' : '' %>>Medium</option>
+                  <option value="high"     <%= ticket.priority === 'high'     ? 'selected' : '' %>>High</option>
+                  <option value="critical" <%= ticket.priority === 'critical' ? 'selected' : '' %>>Critical</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="font-weight-bold">Catatan Teknisi</label>
+            <textarea name="notes" class="form-control" rows="3"
+                      placeholder="Tambahkan catatan tindakan yang sudah/akan dilakukan..."><%= ticket.notes || '' %></textarea>
+            <small class="text-muted">Opsional — catatan dari tim teknisi</small>
+          </div>
+
+        </div>
+        <div class="card-footer d-flex justify-content-between">
+          <button type="submit" class="btn btn-warning">
+            <i class="fas fa-save mr-1"></i> Simpan Perubahan
+          </button>
+          <a href="/tickets/<%= ticket.id %>" class="btn btn-secondary">
+            <i class="fas fa-arrow-left mr-1"></i> Kembali
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

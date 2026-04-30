@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title %> | Ticket TSJ</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/admin-lte/3.2.0/css/adminlte.min.css">
+  <style>
+    .badge-priority-low    { background-color:#28a745; color:#fff; }
+    .badge-priority-medium { background-color:#ffc107; color:#212529; }
+    .badge-priority-high   { background-color:#fd7e14; color:#fff; }
+    .badge-priority-critical { background-color:#dc3545; color:#fff; }
+    .ticket-comment { border-left: 4px solid #007bff; padding: 10px 15px; margin-bottom:12px; background:#f8f9fa; border-radius:4px; }
+    .ticket-comment.own { border-left-color: #28a745; }
+    .timeline-item .timeline-body { white-space: pre-wrap; }
+  </style>
+</head>
+<body class="hold-transition sidebar-mini layout-fixed">
+<div class="wrapper">
+
+  <!-- Navbar -->
+  <nav class="main-header navbar navbar-expand navbar-white navbar-light border-bottom">
+    <ul class="navbar-nav">
+      <li class="nav-item">
+        <a class="nav-link" data-widget="pushmenu" href="#" role="button"><i class="fas fa-bars"></i></a>
+      </li>
+    </ul>
+    <ul class="navbar-nav ml-auto">
+
+      <!-- Bell Notifikasi -->
+      <li class="nav-item dropdown">
+        <a class="nav-link" data-toggle="dropdown" href="#" id="notif-bell-btn">
+          <i class="far fa-bell"></i>
+          <span id="notif-navbar-badge"
+                class="badge badge-warning navbar-badge"
+                style="display:<%= notifCount > 0 ? '' : 'none' %>">
+            <%= notifCount > 99 ? '99+' : notifCount %>
+          </span>
+        </a>
+        <div class="dropdown-menu dropdown-menu-right shadow" style="width:340px;max-height:420px;overflow:hidden;">
+          <div class="dropdown-item d-flex justify-content-between align-items-center border-bottom pb-2">
+            <strong><i class="fas fa-bell mr-1 text-warning"></i> Notifikasi</strong>
+            <div>
+              <span id="notif-header-count"
+                    class="badge badge-warning"
+                    style="display:<%= notifCount > 0 ? '' : 'none' %>">
+                <%= notifCount %> baru
+              </span>
+              <a href="/notifications" class="btn btn-xs btn-light ml-1">Lihat Semua</a>
+            </div>
+          </div>
+
+          <!-- area ini di-refresh via AJAX saat notif masuk -->
+          <div id="notif-dropdown-list" style="max-height:310px;overflow-y:auto;">
+            <%
+              const nIconMap = {
+                ticket_created:  { icon:'fa-ticket-alt',  color:'text-primary'   },
+                ticket_assigned: { icon:'fa-user-check',  color:'text-warning'   },
+                comment_added:   { icon:'fa-comment',     color:'text-info'      },
+                status_changed:  { icon:'fa-sync-alt',    color:'text-success'   },
+                attachment_added:{ icon:'fa-paperclip',   color:'text-secondary' }
+              };
+            %>
+            <% if (notifRecent.length === 0) { %>
+            <div class="text-center text-muted py-3">
+              <i class="fas fa-bell-slash fa-lg mb-1 d-block"></i>Tidak ada notifikasi
+            </div>
+            <% } %>
+            <% notifRecent.forEach(n => { %>
+            <% const ni = nIconMap[n.type] || { icon:'fa-bell', color:'text-muted' }; %>
+            <a href="<%= n.ticket_id ? '/notifications/' + n.id + '/read' : '/notifications' %>"
+               class="dropdown-item border-bottom py-2<%= n.is_read ? '' : ' bg-light' %>"
+               style="white-space:normal;">
+              <div class="d-flex align-items-start">
+                <i class="fas <%= ni.icon %> <%= ni.color %> mt-1 mr-2" style="width:14px;flex-shrink:0;"></i>
+                <div style="flex:1;min-width:0;">
+                  <div class="small" style="line-height:1.3;"><%- n.message %></div>
+                  <div class="text-muted" style="font-size:0.68rem;"><%= timeAgo(n.created_at) %></div>
+                </div>
+                <% if (!n.is_read) { %>
+                <span class="badge badge-warning ml-1" style="font-size:0.55rem;align-self:center;">Baru</span>
+                <% } %>
+              </div>
+            </a>
+            <% }) %>
+          </div>
+
+          <div id="notif-dropdown-footer" class="dropdown-item text-center pt-2"
+               style="display:<%= notifRecent.length > 0 ? '' : 'none' %>">
+            <form action="/notifications/mark-all-read" method="POST" class="d-inline">
+              <button type="submit" class="btn btn-xs btn-outline-secondary">
+                <i class="fas fa-check-double mr-1"></i>Tandai Semua Dibaca
+              </button>
+            </form>
+          </div>
+        </div>
+      </li>
+
+      <!-- User dropdown -->
+      <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#">
+          <i class="far fa-user mr-1"></i>
+          <strong><%= user.name %></strong>
+          <span class="badge badge-<%= user.role === 'admin' ? 'danger' : user.role === 'technician' ? 'info' : 'success' %> ml-1 text-capitalize">
+            <%= user.role %>
+          </span>
+        </a>
+        <div class="dropdown-menu dropdown-menu-right shadow">
+          <a href="/auth/logout" class="dropdown-item text-danger">
+            <i class="fas fa-sign-out-alt mr-2"></i>Logout
+          </a>
+        </div>
+      </li>
+    </ul>
+  </nav>
+
+  <!-- Sidebar -->
+  <aside class="main-sidebar sidebar-dark-primary elevation-4">
+    <a href="/" class="brand-link text-center">
+      <i class="fas fa-ticket-alt text-warning mr-2"></i>
+      <span class="brand-text font-weight-bold">Ticket TSJ</span>
+    </a>
+    <div class="sidebar">
+      <div class="user-panel mt-3 pb-3 mb-3 d-flex">
+        <div class="image">
+          <img src="https://ui-avatars.com/api/?name=<%= encodeURIComponent(user.name) %>&background=3c8dbc&color=fff&size=50"
+               class="img-circle elevation-2" alt="Avatar">
+        </div>
+        <div class="info">
+          <span class="d-block text-white font-weight-bold"><%= user.name %></span>
+          <small class="text-muted text-capitalize"><%= user.role %></small>
+        </div>
+      </div>
+      <nav class="mt-2">
+        <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu">
+          <li class="nav-item">
+            <a href="/" class="nav-link <%= typeof title !== 'undefined' && title === 'Dashboard' ? 'active' : '' %>">
+              <i class="nav-icon fas fa-tachometer-alt"></i>
+              <p>Dashboard</p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="/tickets" class="nav-link">
+              <i class="nav-icon fas fa-ticket-alt"></i>
+              <p>Semua Tiket</p>
+            </a>
+          </li>
+          <% if (user.role === 'admin' || user.role === 'reporter') { %>
+          <li class="nav-item">
+            <a href="/tickets/create" class="nav-link">
+              <i class="nav-icon fas fa-plus-circle"></i>
+              <p>Buat Tiket</p>
+            </a>
+          </li>
+          <% } %>
+          <li class="nav-item">
+            <a href="/notifications" class="nav-link">
+              <i class="nav-icon fas fa-bell"></i>
+              <p>Notifikasi
+                <span id="notif-sidebar-badge"
+                      class="badge badge-warning right"
+                      style="display:<%= notifCount > 0 ? '' : 'none' %>">
+                  <%= notifCount %>
+                </span>
+              </p>
+            </a>
+          </li>
+          <% if (user.role === 'admin') { %>
+          <li class="nav-item">
+            <a href="/users" class="nav-link">
+              <i class="nav-icon fas fa-users-cog"></i>
+              <p>Pengguna</p>
+            </a>
+          </li>
+          <% } %>
+        </ul>
+      </nav>
+    </div>
+  </aside>
+
+  <!-- Content Wrapper -->
+  <div class="content-wrapper">
+    <div class="content-header">
+      <div class="container-fluid">
+        <div class="row mb-2">
+          <div class="col-sm-6">
+            <h1 class="m-0 text-dark"><i class="fas fa-circle text-primary mr-2" style="font-size:10px;vertical-align:middle;"></i><%= title %></h1>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <section class="content">
+      <div class="container-fluid">
+
+        <% if (success && success.length > 0) { %>
+        <div class="alert alert-success alert-dismissible fade show shadow-sm">
+          <i class="fas fa-check-circle mr-2"></i><%= success[0] %>
+          <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
+        </div>
+        <% } %>
+        <% if (error && error.length > 0) { %>
+        <div class="alert alert-danger alert-dismissible fade show shadow-sm">
+          <i class="fas fa-exclamation-triangle mr-2"></i><%= error[0] %>
+          <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
+        </div>
+        <% } %>
+
+        <%- body %>
+
+      </div>
+    </section>
+  </div>
+
+  <footer class="main-footer">
+    <strong>&copy; 2024 Ticket Maintenance System.</strong>
+    <div class="float-right d-none d-sm-inline-block">
+      <b>Version</b> 1.0.0
+    </div>
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.6.2/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/admin-lte/3.2.0/js/adminlte.min.js"></script>
+
+<!-- Toast container -->
+<div id="notif-toasts" style="position:fixed;top:64px;right:16px;z-index:9999;width:320px;pointer-events:none;"></div>
+
+<style>
+@keyframes ntSlideIn { from { transform:translateX(110%);opacity:0 } to { transform:translateX(0);opacity:1 } }
+</style>
+
+<script>
+(function () {
+  const ICONS = {
+    ticket_created:   { fa:'fa-ticket-alt', color:'#007bff', label:'Tiket Baru'    },
+    ticket_assigned:  { fa:'fa-user-check', color:'#ffc107', label:'Penugasan'     },
+    comment_added:    { fa:'fa-comment',    color:'#17a2b8', label:'Komentar Baru' },
+    status_changed:   { fa:'fa-sync-alt',   color:'#28a745', label:'Status Tiket'  },
+    attachment_added: { fa:'fa-paperclip',  color:'#6c757d', label:'Lampiran Baru' },
+  };
+
+  // ── 1. Update badge navbar + sidebar ────────────────────────────
+  function setBadge(count) {
+    const nb = document.getElementById('notif-navbar-badge');
+    const sb = document.getElementById('notif-sidebar-badge');
+    const hc = document.getElementById('notif-header-count');
+    [nb, sb].forEach(el => {
+      if (!el) return;
+      el.textContent = count > 99 ? '99+' : count;
+      el.style.display = count > 0 ? '' : 'none';
+    });
+    if (hc) {
+      hc.textContent = count + ' baru';
+      hc.style.display = count > 0 ? '' : 'none';
+    }
+  }
+
+  // ── 2. Refresh isi dropdown via AJAX ─────────────────────────────
+  function timeAgoJS(dateStr) {
+    const diff = Math.floor((Date.now() - new Date(dateStr)) / 1000);
+    if (diff < 60)    return diff + ' dtk lalu';
+    if (diff < 3600)  return Math.floor(diff/60)   + ' mnt lalu';
+    if (diff < 86400) return Math.floor(diff/3600)  + ' jam lalu';
+    return Math.floor(diff/86400) + ' hari lalu';
+  }
+
+  const iconCss = {
+    ticket_created:'text-primary', ticket_assigned:'text-warning',
+    comment_added:'text-info',     status_changed:'text-success',
+    attachment_added:'text-secondary'
+  };
+  const iconFa = {
+    ticket_created:'fa-ticket-alt', ticket_assigned:'fa-user-check',
+    comment_added:'fa-comment',     status_changed:'fa-sync-alt',
+    attachment_added:'fa-paperclip'
+  };
+
+  function renderDropdown(notifications) {
+    const list   = document.getElementById('notif-dropdown-list');
+    const footer = document.getElementById('notif-dropdown-footer');
+    if (!list) return;
+
+    if (notifications.length === 0) {
+      list.innerHTML = '<div class="text-center text-muted py-3"><i class="fas fa-bell-slash fa-lg mb-1 d-block"></i>Tidak ada notifikasi</div>';
+      if (footer) footer.style.display = 'none';
+      return;
+    }
+
+    list.innerHTML = notifications.map(n => {
+      const ic  = iconCss[n.type] || 'text-muted';
+      const ifa = iconFa[n.type]  || 'fa-bell';
+      const href = n.ticket_id ? '/notifications/' + n.id + '/read' : '/notifications';
+      const bg   = n.is_read ? '' : ' bg-light';
+      const badge = n.is_read ? '' : '<span class="badge badge-warning ml-1" style="font-size:.55rem;align-self:center;">Baru</span>';
+      return `<a href="${href}" class="dropdown-item border-bottom py-2${bg}" style="white-space:normal;">
+        <div class="d-flex align-items-start">
+          <i class="fas ${ifa} ${ic} mt-1 mr-2" style="width:14px;flex-shrink:0;"></i>
+          <div style="flex:1;min-width:0;">
+            <div class="small" style="line-height:1.3;">${n.message}</div>
+            <div class="text-muted" style="font-size:.68rem;">${timeAgoJS(n.created_at)}</div>
+          </div>${badge}
+        </div></a>`;
+    }).join('');
+
+    if (footer) footer.style.display = '';
+  }
+
+  function refreshDropdown() {
+    fetch('/notifications/recent')
+      .then(r => r.json())
+      .then(d => renderDropdown(d.notifications))
+      .catch(() => {});
+  }
+
+  // ── 3. Toast popup ───────────────────────────────────────────────
+  function showToast(data) {
+    const ni   = ICONS[data.type] || { fa:'fa-bell', color:'#6c757d', label:'Notifikasi' };
+    const id   = 'nt-' + Date.now();
+    const link = data.ticket_id ? '/tickets/' + data.ticket_id : '/notifications';
+
+    const el = document.createElement('div');
+    el.id = id;
+    el.style.cssText = [
+      'pointer-events:auto;margin-bottom:8px;border-radius:6px;overflow:hidden',
+      'box-shadow:0 4px 16px rgba(0,0,0,.18);background:#fff',
+      'border-left:4px solid ' + ni.color + ';animation:ntSlideIn .3s ease'
+    ].join(';');
+    el.innerHTML =
+      `<div style="padding:9px 12px;display:flex;align-items:center;gap:8px;background:#f8f9fa;border-bottom:1px solid #eee;">
+         <i class="fas ${ni.fa}" style="color:${ni.color};font-size:13px;"></i>
+         <strong style="flex:1;font-size:12.5px;">${ni.label}</strong>
+         <button onclick="this.closest('[id]').remove()" style="background:none;border:none;cursor:pointer;font-size:18px;line-height:1;color:#aaa;padding:0;">&times;</button>
+       </div>
+       <div style="padding:9px 12px;font-size:12.5px;line-height:1.5;">${data.message}</div>
+       <div style="padding:2px 12px 9px;">
+         <a href="${link}" style="font-size:12px;color:${ni.color};font-weight:600;">
+           <i class="fas fa-arrow-right" style="font-size:10px;"></i> Lihat sekarang
+         </a>
+       </div>`;
+
+    document.getElementById('notif-toasts').prepend(el);
+    setTimeout(() => { el.style.transition='opacity .5s'; el.style.opacity='0';
+      setTimeout(() => el.remove(), 500); }, 7000);
+  }
+
+  // ── 4. SSE ───────────────────────────────────────────────────────
+  function connect() {
+    const es = new EventSource('/notifications/stream');
+
+    es.onmessage = (e) => {
+      let data;
+      try { data = JSON.parse(e.data); } catch (_) { return; }
+      if (data.type === 'connected') return;
+
+      setBadge(data.count);   // update angka badge langsung
+      refreshDropdown();       // reload isi dropdown via AJAX
+      showToast(data);         // tampilkan popup
+    };
+
+    es.onerror = () => { es.close(); setTimeout(connect, 5000); };
+  }
+
+  connect();
+})();
+</script>
+</body>
+</html>
