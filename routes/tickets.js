@@ -23,8 +23,8 @@ function handleUpload(req, res, next) {
 }
 
 router.get('/', requireAuth, ticketController.index);
-router.get('/create', requireAuth, requireRole('admin', 'reporter'), ticketController.createPage);
-router.post('/', requireAuth, requireRole('admin', 'reporter'), ticketController.create);
+router.get('/create', requireAuth, requireRole('admin', 'reporter', 'supervisor'), ticketController.createPage);
+router.post('/', requireAuth, requireRole('admin', 'reporter', 'supervisor'), ticketController.create);
 router.get('/:id', requireAuth, ticketController.show);
 router.get('/:id/edit', requireAuth, requireRole('admin'), ticketController.editPage);
 router.put('/:id', requireAuth, requireRole('admin'), ticketController.update);

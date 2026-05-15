@@ -36,6 +36,7 @@ exports.index = (req, res) => {
     query += ' AND t.assigned_to = ?';
     params.push(user.id);
   }
+  // admin and supervisor see all tickets — no additional filter
 
   if (status) { query += ' AND t.status = ?'; params.push(status); }
   if (priority) { query += ' AND t.priority = ?'; params.push(priority); }
@@ -106,6 +107,7 @@ exports.show = (req, res) => {
     req.flash('error', 'Tiket ini tidak ditugaskan kepada Anda');
     return res.redirect('/tickets');
   }
+  // admin and supervisor can access any ticket
 
   const comments = db.prepare(`
     SELECT c.*, u.name as user_name, u.role as user_role

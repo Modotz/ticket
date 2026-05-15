@@ -31,6 +31,15 @@ exports.index = (req, res) => {
     };
     recentTickets = db.prepare(baseJoin + ' WHERE t.created_by = ? ORDER BY t.created_at DESC LIMIT 10').all(user.id);
 
+  } else if (user.role === 'supervisor') {
+    stats = {
+      total: db.prepare('SELECT COUNT(*) as c FROM tickets').get().c,
+      open: db.prepare("SELECT COUNT(*) as c FROM tickets WHERE status = 'open'").get().c,
+      in_progress: db.prepare("SELECT COUNT(*) as c FROM tickets WHERE status IN ('assigned','in_progress')").get().c,
+      resolved: db.prepare("SELECT COUNT(*) as c FROM tickets WHERE status IN ('resolved','closed')").get().c
+    };
+    recentTickets = db.prepare(baseJoin + ' ORDER BY t.created_at DESC LIMIT 10').all();
+
   } else if (user.role === 'technician') {
     stats = {
       total: db.prepare('SELECT COUNT(*) as c FROM tickets WHERE assigned_to = ?').get(user.id).c,

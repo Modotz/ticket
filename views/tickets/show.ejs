@@ -21,6 +21,9 @@ const pClass = {low:'secondary',medium:'info',high:'warning',critical:'danger'};
             <i class="fas fa-edit mr-1"></i> Edit
           </a>
           <% } %>
+          <% if (user.role === 'supervisor') { %>
+          <span class="badge badge-warning px-2 py-1"><i class="fas fa-eye mr-1"></i>View Only</span>
+          <% } %>
         </div>
       </div>
       <div class="card-body">
@@ -85,7 +88,7 @@ const pClass = {low:'secondary',medium:'info',high:'warning',critical:'danger'};
           <div class="d-flex justify-content-between align-items-center mb-1">
             <div>
               <strong><%= comment.user_name %></strong>
-              <span class="badge badge-<%= comment.user_role === 'admin' ? 'danger' : comment.user_role === 'technician' ? 'info' : 'success' %> badge-sm ml-1">
+              <span class="badge badge-<%= comment.user_role === 'admin' ? 'danger' : comment.user_role === 'technician' ? 'info' : comment.user_role === 'supervisor' ? 'warning' : 'success' %> badge-sm ml-1">
                 <%= comment.user_role %>
               </span>
               <% if (comment.user_id === user.id) { %>
@@ -292,7 +295,9 @@ const pClass = {low:'secondary',medium:'info',high:'warning',critical:'danger'};
             <%= ticket.status.replace('_',' ').toUpperCase() %>
           </span>
         </div>
-        <% if (ticket.status !== 'closed') { %>
+        <% if (user.role === 'supervisor') { %>
+        <p class="text-muted small mb-0"><i class="fas fa-eye mr-1"></i>Supervisor tidak dapat mengubah status</p>
+        <% } else if (ticket.status !== 'closed') { %>
         <form action="/tickets/<%= ticket.id %>/status" method="POST">
           <div class="form-group">
             <label class="small font-weight-bold">Ubah ke Status</label>

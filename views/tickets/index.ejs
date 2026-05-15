@@ -4,7 +4,7 @@
       <i class="fas fa-ticket-alt text-primary mr-2"></i>Daftar Tiket
     </h3>
     <div class="card-tools">
-      <% if (user.role === 'admin' || user.role === 'reporter') { %>
+      <% if (user.role === 'admin' || user.role === 'reporter' || user.role === 'supervisor') { %>
       <a href="/tickets/create" class="btn btn-primary btn-sm">
         <i class="fas fa-plus mr-1"></i> Buat Tiket
       </a>

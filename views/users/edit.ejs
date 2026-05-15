@@ -35,6 +35,7 @@
             <select name="role" class="form-control" required>
               <option value="reporter"   <%= editUser.role === 'reporter'   ? 'selected' : '' %>>Reporter</option>
               <option value="technician" <%= editUser.role === 'technician' ? 'selected' : '' %>>Technician</option>
+              <option value="supervisor" <%= editUser.role === 'supervisor' ? 'selected' : '' %>>Supervisor</option>
               <option value="admin"      <%= editUser.role === 'admin'      ? 'selected' : '' %>>Admin</option>
             </select>
           </div>

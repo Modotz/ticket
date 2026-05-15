@@ -3,7 +3,7 @@ const sse = require('./sseManager');
 
 function getAdminIds() {
   return getDb()
-    .prepare("SELECT id FROM users WHERE role = 'admin' AND is_active = 1")
+    .prepare("SELECT id FROM users WHERE role IN ('admin', 'supervisor') AND is_active = 1")
     .all().map(u => u.id);
 }
 

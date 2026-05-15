@@ -103,11 +103,19 @@
         <a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#">
           <i class="far fa-user mr-1"></i>
           <strong><%= user.name %></strong>
-          <span class="badge badge-<%= user.role === 'admin' ? 'danger' : user.role === 'technician' ? 'info' : 'success' %> ml-1 text-capitalize">
+          <span class="badge badge-<%= user.role === 'admin' ? 'danger' : user.role === 'technician' ? 'info' : user.role === 'supervisor' ? 'warning' : 'success' %> ml-1 text-capitalize">
             <%= user.role %>
           </span>
         </a>
         <div class="dropdown-menu dropdown-menu-right shadow">
+          <div class="dropdown-item-text text-muted small px-3 py-1">
+            <i class="fas fa-envelope mr-1"></i><%= user.email %>
+          </div>
+          <div class="dropdown-divider m-0"></div>
+          <a href="/auth/change-password" class="dropdown-item">
+            <i class="fas fa-key mr-2 text-warning"></i>Ganti Password
+          </a>
+          <div class="dropdown-divider m-0"></div>
           <a href="/auth/logout" class="dropdown-item text-danger">
             <i class="fas fa-sign-out-alt mr-2"></i>Logout
           </a>
@@ -147,7 +155,7 @@
               <p>Semua Tiket</p>
             </a>
           </li>
-          <% if (user.role === 'admin' || user.role === 'reporter') { %>
+          <% if (user.role === 'admin' || user.role === 'reporter' || user.role === 'supervisor') { %>
           <li class="nav-item">
             <a href="/tickets/create" class="nav-link">
               <i class="nav-icon fas fa-plus-circle"></i>
@@ -348,21 +356,43 @@
   }
 
   // ── 4. SSE ───────────────────────────────────────────────────────
+  let es = null;
+  let leaving = false;   // flag: halaman sedang ditinggalkan
+
   function connect() {
-    const es = new EventSource('/notifications/stream');
+    if (leaving) return;
+    es = new EventSource('/notifications/stream');
 
     es.onmessage = (e) => {
       let data;
       try { data = JSON.parse(e.data); } catch (_) { return; }
       if (data.type === 'connected') return;
 
-      setBadge(data.count);   // update angka badge langsung
-      refreshDropdown();       // reload isi dropdown via AJAX
-      showToast(data);         // tampilkan popup
+      setBadge(data.count);
+      refreshDropdown();
+      showToast(data);
     };
 
-    es.onerror = () => { es.close(); setTimeout(connect, 5000); };
+    es.onerror = () => {
+      es.close();
+      es = null;
+      // Jangan reconnect jika sedang navigasi ke halaman lain
+      if (!leaving) setTimeout(connect, 5000);
+    };
   }
+
+  // ── Tutup SSE sebelum browser pindah halaman ─────────────────────
+  // Ini penyebab loading lambat: SSE lama menggantung dan makan
+  // slot koneksi browser (HTTP/1.1 max 6 per domain)
+  window.addEventListener('beforeunload', () => {
+    leaving = true;
+    if (es) { es.close(); es = null; }
+  });
+
+  // Buka kembali SSE jika user kembali ke tab ini (bfcache)
+  window.addEventListener('pageshow', (e) => {
+    if (e.persisted) { leaving = false; if (!es) connect(); }
+  });
 
   connect();
 })();
