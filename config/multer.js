@@ -26,7 +26,7 @@ const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, UPLOAD_DIR),
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
-    const safe = `${req.params.id}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}${ext}`;
+    const safe = `${req.params.id || 'new'}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}${ext}`;
     cb(null, safe);
   }
 });

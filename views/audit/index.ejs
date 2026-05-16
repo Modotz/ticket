@@ -1,0 +1,96 @@
+<%
+  const actMap = {
+    login:{c:'success',i:'fa-sign-in-alt'}, logout:{c:'secondary',i:'fa-sign-out-alt'},
+    login_failed:{c:'danger',i:'fa-user-lock'}, password_changed:{c:'warning',i:'fa-key'},
+    ticket_created:{c:'primary',i:'fa-ticket-alt'}, ticket_updated:{c:'info',i:'fa-edit'},
+    ticket_assigned:{c:'warning',i:'fa-user-check'}, status_changed:{c:'info',i:'fa-sync-alt'},
+    ticket_deleted:{c:'danger',i:'fa-trash'}, comment_added:{c:'info',i:'fa-comment'},
+    attachment_added:{c:'secondary',i:'fa-paperclip'}, attachment_deleted:{c:'danger',i:'fa-trash'},
+    sla_escalation:{c:'danger',i:'fa-exclamation-triangle'},
+    user_created:{c:'success',i:'fa-user-plus'}, user_updated:{c:'info',i:'fa-user-edit'},
+    user_deactivated:{c:'danger',i:'fa-user-slash'},
+    category_created:{c:'success',i:'fa-tag'}, category_updated:{c:'info',i:'fa-tag'}, category_deleted:{c:'danger',i:'fa-tag'},
+    priority_created:{c:'success',i:'fa-flag'}, priority_updated:{c:'info',i:'fa-flag'}, priority_deleted:{c:'danger',i:'fa-flag'}
+  };
+%>
+
+<div class="card">
+  <div class="card-header pro-head d-flex flex-wrap align-items-center py-3">
+    <div class="mr-auto">
+      <h3 class="card-title font-weight-bold mb-0" style="font-size:1.15rem;">
+        <i class="fas fa-history mr-2"></i>Audit Log
+      </h3>
+      <div class="pro-sub mt-1"><%= logs.length %> aktivitas terbaru (maks 500)</div>
+    </div>
+  </div>
+
+  <div class="card-body border-bottom py-3" style="background:#f8fafc;">
+    <form method="GET" action="/audit" class="form-row align-items-end">
+      <div class="col-md-3 mb-2">
+        <label class="small text-muted mb-1">Aksi</label>
+        <select name="action" class="form-control form-control-sm">
+          <option value="">Semua aksi</option>
+          <% actions.forEach(a => { %>
+          <option value="<%= a %>" <%= filters.action === a ? 'selected' : '' %>><%= a %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="col-md-3 mb-2">
+        <label class="small text-muted mb-1">Cari</label>
+        <input type="text" name="q" class="form-control form-control-sm"
+               placeholder="user / detail / id" value="<%= filters.q || '' %>">
+      </div>
+      <div class="col-md-2 mb-2">
+        <label class="small text-muted mb-1">Dari</label>
+        <input type="date" name="date_from" class="form-control form-control-sm" value="<%= filters.date_from || '' %>">
+      </div>
+      <div class="col-md-2 mb-2">
+        <label class="small text-muted mb-1">Sampai</label>
+        <input type="date" name="date_to" class="form-control form-control-sm" value="<%= filters.date_to || '' %>">
+      </div>
+      <div class="col-md-2 mb-2">
+        <div class="btn-group btn-block">
+          <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-filter mr-1"></i>Filter</button>
+          <a href="/audit" class="btn btn-outline-secondary btn-sm"><i class="fas fa-redo"></i></a>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead>
+          <tr>
+            <th style="width:160px;">Waktu</th>
+            <th style="width:160px;">Pengguna</th>
+            <th style="width:170px;">Aksi</th>
+            <th>Detail</th>
+            <th style="width:130px;">Entitas</th>
+            <th style="width:120px;">IP</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (logs.length === 0) { %>
+          <tr><td colspan="6" class="text-center text-muted py-5">
+            <i class="fas fa-history fa-3x mb-3 d-block text-light"></i>Tidak ada catatan
+          </td></tr>
+          <% } %>
+          <% logs.forEach(l => { const a = actMap[l.action] || {c:'secondary',i:'fa-circle'}; %>
+          <tr>
+            <td><small><%= new Date(l.created_at).toLocaleString('id-ID') %></small></td>
+            <td><small class="font-weight-bold"><%= l.user_name || '—' %></small></td>
+            <td><span class="badge badge-soft badge-<%= a.c %>"><i class="fas <%= a.i %> mr-1"></i><%= l.action %></span></td>
+            <td><small><%= l.detail || '—' %></small></td>
+            <td><small class="text-muted"><%= l.entity_type ? l.entity_type + (l.entity_id ? ' #' + l.entity_id : '') : '—' %></small></td>
+            <td><small class="text-muted"><%= l.ip || '—' %></small></td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+    <div class="card-footer text-muted small">
+      Menampilkan <strong class="text-dark"><%= logs.length %></strong> catatan terakhir.
+    </div>
+  </div>
+</div>

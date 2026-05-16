@@ -1,0 +1,70 @@
+<div class="row justify-content-center">
+  <div class="col-md-7">
+    <div class="card shadow">
+      <div class="card-header pro-head py-3">
+        <h3 class="card-title"><i class="fas fa-edit mr-2"></i>Edit Prioritas: <%= priority.name %></h3>
+      </div>
+      <form action="/priorities/<%= priority.id %>?_method=PUT" method="POST">
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6 form-group">
+              <label class="font-weight-bold">Kode <span class="text-danger">*</span></label>
+              <input type="text" name="code" class="form-control" maxlength="30"
+                     value="<%= priority.code %>" required>
+              <small class="text-muted">Mengubah kode ikut memperbarui tiket lama yang memakainya.</small>
+            </div>
+            <div class="col-md-6 form-group">
+              <label class="font-weight-bold">Nama Tampil <span class="text-danger">*</span></label>
+              <input type="text" name="name" class="form-control" maxlength="40"
+                     value="<%= priority.name %>" required>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-4 form-group">
+              <label class="font-weight-bold">Warna Badge</label>
+              <select name="color" class="form-control">
+                <% COLORS.forEach(c => { %>
+                <option value="<%= c %>" <%= priority.color === c ? 'selected' : '' %>><%= c %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="col-md-5 form-group">
+              <label class="font-weight-bold">Waktu (SLA) <span class="text-danger">*</span></label>
+              <div class="input-group">
+                <input type="number" name="duration_value" class="form-control" min="1"
+                       value="<%= priority.duration_value %>" required>
+                <div class="input-group-append">
+                  <select name="duration_unit" class="form-control">
+                    <% UNITS.forEach(u => { %>
+                    <option value="<%= u %>" <%= priority.duration_unit === u ? 'selected' : '' %>><%= u %></option>
+                    <% }) %>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3 form-group">
+              <label class="font-weight-bold">Urutan</label>
+              <input type="number" name="sort_order" class="form-control" value="<%= priority.sort_order %>">
+            </div>
+          </div>
+          <div class="form-group mb-0">
+            <div class="custom-control custom-switch">
+              <input type="checkbox" class="custom-control-input" id="is_active" name="is_active"
+                     value="1" <%= priority.is_active ? 'checked' : '' %>>
+              <label class="custom-control-label font-weight-bold" for="is_active">Aktif</label>
+            </div>
+            <small class="text-muted">Nonaktif = tidak bisa dipilih di tiket baru.</small>
+          </div>
+        </div>
+        <div class="card-footer d-flex justify-content-between align-items-center">
+          <a href="/priorities" class="btn btn-secondary">
+            <i class="fas fa-arrow-left mr-1"></i> Kembali
+          </a>
+          <button type="submit" class="btn btn-primary ml-auto">
+            <i class="fas fa-save mr-1"></i> Simpan Perubahan
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

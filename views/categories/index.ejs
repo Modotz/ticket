@@ -1,0 +1,65 @@
+<div class="card">
+  <div class="card-header pro-head d-flex flex-wrap align-items-center py-3">
+    <div class="mr-auto">
+      <h3 class="card-title font-weight-bold mb-0" style="font-size:1.15rem;">
+        <i class="fas fa-tags mr-2"></i>Master Kategori
+      </h3>
+      <div class="pro-sub mt-1"><%= categories.length %> kategori</div>
+    </div>
+    <a href="/categories/create" class="btn btn-light btn-sm shadow-sm">
+      <i class="fas fa-plus mr-1"></i> Tambah Kategori
+    </a>
+  </div>
+
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead>
+          <tr>
+            <th style="width:46px;">#</th>
+            <th>Nama Kategori</th>
+            <th style="width:120px;">Dipakai</th>
+            <th style="width:110px;">Status</th>
+            <th style="width:120px;" class="text-center">Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (categories.length === 0) { %>
+          <tr><td colspan="5" class="text-center text-muted py-5">
+            <i class="fas fa-tags fa-3x mb-3 d-block text-light"></i>Belum ada kategori
+          </td></tr>
+          <% } %>
+          <% categories.forEach((c, i) => { %>
+          <tr class="<%= c.is_active ? '' : 'text-muted' %>">
+            <td><%= i + 1 %></td>
+            <td class="font-weight-bold"><i class="fas fa-tag text-muted mr-2"></i><%= c.name %></td>
+            <td><span class="badge badge-light border"><%= c.used %> tiket</span></td>
+            <td>
+              <span class="badge badge-soft badge-<%= c.is_active ? 'success' : 'secondary' %>">
+                <i class="fas <%= c.is_active ? 'fa-check-circle' : 'fa-ban' %> mr-1"></i><%= c.is_active ? 'Aktif' : 'Nonaktif' %>
+              </span>
+            </td>
+            <td class="text-center">
+              <div class="btn-group" role="group">
+                <a href="/categories/<%= c.id %>/edit" class="btn btn-sm btn-outline-warning" title="Edit">
+                  <i class="fas fa-edit"></i>
+                </a>
+                <form action="/categories/<%= c.id %>?_method=DELETE" method="POST" class="d-inline"
+                      onsubmit="return confirm('Hapus kategori <%= c.name %>?')">
+                  <button type="submit" class="btn btn-sm btn-outline-danger" title="Hapus">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+    <div class="card-footer text-muted small">
+      Total: <strong class="text-dark"><%= categories.length %></strong> kategori &bull;
+      Kategori nonaktif tidak muncul di form tiket.
+    </div>
+  </div>
+</div>

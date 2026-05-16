@@ -1,0 +1,76 @@
+<div class="card">
+  <div class="card-header pro-head d-flex flex-wrap align-items-center py-3">
+    <div class="mr-auto">
+      <h3 class="card-title font-weight-bold mb-0" style="font-size:1.15rem;">
+        <i class="fas fa-flag mr-2"></i>Master Prioritas
+      </h3>
+      <div class="pro-sub mt-1"><%= priorities.length %> prioritas &bull; kolom Waktu = target SLA</div>
+    </div>
+    <a href="/priorities/create" class="btn btn-light btn-sm shadow-sm">
+      <i class="fas fa-plus mr-1"></i> Tambah Prioritas
+    </a>
+  </div>
+
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead>
+          <tr>
+            <th style="width:60px;">Urutan</th>
+            <th>Prioritas</th>
+            <th style="width:120px;">Kode</th>
+            <th style="width:150px;">Waktu (SLA)</th>
+            <th style="width:110px;">Dipakai</th>
+            <th style="width:100px;">Status</th>
+            <th style="width:120px;" class="text-center">Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (priorities.length === 0) { %>
+          <tr><td colspan="7" class="text-center text-muted py-5">
+            <i class="fas fa-flag fa-3x mb-3 d-block text-light"></i>Belum ada prioritas
+          </td></tr>
+          <% } %>
+          <% priorities.forEach(p => { %>
+          <tr class="<%= p.is_active ? '' : 'text-muted' %>">
+            <td><span class="badge badge-light border"><%= p.sort_order %></span></td>
+            <td>
+              <span class="badge badge-soft badge-<%= p.color %>" style="font-size:.78rem;">
+                <%= p.name %>
+              </span>
+            </td>
+            <td><code><%= p.code %></code></td>
+            <td>
+              <i class="far fa-clock text-muted mr-1"></i>
+              <strong><%= p.duration_value %></strong> <%= p.duration_unit %>
+            </td>
+            <td><span class="badge badge-light border"><%= p.used %> tiket</span></td>
+            <td>
+              <span class="badge badge-soft badge-<%= p.is_active ? 'success' : 'secondary' %>">
+                <i class="fas <%= p.is_active ? 'fa-check-circle' : 'fa-ban' %> mr-1"></i><%= p.is_active ? 'Aktif' : 'Nonaktif' %>
+              </span>
+            </td>
+            <td class="text-center">
+              <div class="btn-group" role="group">
+                <a href="/priorities/<%= p.id %>/edit" class="btn btn-sm btn-outline-warning" title="Edit">
+                  <i class="fas fa-edit"></i>
+                </a>
+                <form action="/priorities/<%= p.id %>?_method=DELETE" method="POST" class="d-inline"
+                      onsubmit="return confirm('Hapus prioritas <%= p.name %>?')">
+                  <button type="submit" class="btn btn-sm btn-outline-danger" title="Hapus">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+    <div class="card-footer text-muted small">
+      Total: <strong class="text-dark"><%= priorities.length %></strong> prioritas &bull;
+      <strong>Waktu (SLA)</strong> = target penyelesaian, mis. Medium 2 hari, Low 1 minggu.
+    </div>
+  </div>
+</div>

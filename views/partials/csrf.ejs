@@ -1,0 +1,35 @@
+<meta name="csrf-token" content="<%= csrfToken %>">
+<script>
+(function () {
+  var T = '<%= csrfToken %>';
+
+  // 1) Patch fetch: sisipkan header X-CSRF-Token untuk request non-GET same-origin
+  var _f = window.fetch;
+  window.fetch = function (input, init) {
+    init = init || {};
+    var method = (init.method ||
+      (input && typeof input === 'object' && input.method) || 'GET').toUpperCase();
+    var url = (typeof input === 'string') ? input : (input && input.url) || '';
+    var sameOrigin = !/^https?:\/\//i.test(url) || url.indexOf(location.origin) === 0;
+    if (method !== 'GET' && method !== 'HEAD' && sameOrigin) {
+      var h = new Headers(init.headers ||
+        (input && typeof input === 'object' && input.headers) || {});
+      if (!h.has('X-CSRF-Token')) h.set('X-CSRF-Token', T);
+      init.headers = h;
+    }
+    return _f(input, init);
+  };
+
+  // 2) Sisipkan hidden input _csrf ke setiap <form> yang mengubah data
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('form').forEach(function (f) {
+      var m = (f.getAttribute('method') || 'GET').toUpperCase();
+      if (m === 'GET') return;
+      if (f.querySelector('input[name="_csrf"]')) return;
+      var i = document.createElement('input');
+      i.type = 'hidden'; i.name = '_csrf'; i.value = T;
+      f.appendChild(i);
+    });
+  });
+})();
+</script>

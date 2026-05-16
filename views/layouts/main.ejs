@@ -4,17 +4,77 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><%= title %> | Ticket TSJ</title>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/admin-lte/3.2.0/css/adminlte.min.css">
+  <link rel="icon" href="data:,">
+  <%- include('../partials/csrf') %>
+  <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css">
+  <link rel="stylesheet" href="/vendor/adminlte/adminlte.min.css">
   <style>
+    :root{ --pro-1:#2f5597; --pro-2:#1f3a6b; --pro-soft:#f4f9ff; }
+
+    body, .wrapper{ background:#f4f6f9; }
+    .content-wrapper{ background:#f4f6f9; }
+    .content-header h1{ font-size:1.4rem; font-weight:700; color:#2d3748; }
+    .content-header h1 .fa-circle{ display:none; }
+
+    /* Cards */
+    .card{ border:0; border-radius:.6rem;
+           box-shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04); }
+    .card-header{ border-bottom:1px solid #eef1f5; }
+    .card-header .card-title{ font-weight:700; font-size:1.05rem; }
+    .card-footer{ background:#fff; border-top:1px solid #eef1f5; }
+
+    /* Reusable gradient header */
+    .pro-head{ background:linear-gradient(135deg,var(--pro-1),var(--pro-2));
+               color:#fff; border:0; }
+    .pro-head, .pro-head .card-title, .pro-head h3,
+    .pro-head a.text-white, .pro-head code, .pro-head strong{ color:#fff; }
+    .pro-head code{ background:rgba(255,255,255,.15); padding:.1rem .4rem; border-radius:.25rem; }
+    .pro-head .pro-sub{ color:rgba(255,255,255,.78); font-size:.8rem; }
+    .pro-head .card-tools .btn{ box-shadow:0 1px 2px rgba(0,0,0,.15); }
+
+    /* Tables */
+    .table thead th{ font-size:.7rem; letter-spacing:.05em; text-transform:uppercase;
+                     color:#6c757d; background:#f1f4f8; border-top:0;
+                     border-bottom:2px solid #e3e8ef; white-space:nowrap; }
+    .table td, .table th{ vertical-align:middle; }
+    .table-hover tbody tr:hover{ background:var(--pro-soft); }
+
+    /* Badges & buttons */
+    .badge{ font-weight:600; letter-spacing:.02em; }
+    .badge-soft{ border-radius:50rem; padding:.35em .65em; font-size:.7rem; }
+    .btn{ border-radius:.4rem; font-weight:600; }
+    .btn-xs{ padding:.15rem .45rem; font-size:.72rem; border-radius:.35rem; }
+
+    /* SLA progress bar */
+    .sla-bar{ height:7px; background:#e9ecef; border-radius:50rem; overflow:hidden; margin:3px 0; }
+    .sla-bar-fill{ height:100%; border-radius:50rem; transition:width .4s ease; }
+
+    /* Forms */
+    .form-control:focus{ border-color:#7ea3d6;
+                         box-shadow:0 0 0 .2rem rgba(47,85,151,.15); }
+    .form-group > label, label.font-weight-bold{ color:#43506b; }
+
+    /* Stat boxes */
+    .small-box{ border-radius:.6rem; box-shadow:0 2px 6px rgba(0,0,0,.08); }
+    .small-box .icon{ opacity:.22; }
+    .small-box h3{ font-weight:700; }
+
+    /* Avatars */
+    .avatar-xs{ width:26px;height:26px;border-radius:50%;object-fit:cover;
+                margin-right:6px;vertical-align:middle; }
+
+    /* Timeline / comments (rich HTML aware) */
+    .timeline-item .timeline-body{ white-space:normal; }
+    .timeline-item .timeline-body img{ max-width:100%; height:auto; }
+    .ticket-comment{ border-left:4px solid #2f5597; padding:12px 16px;
+                     margin-bottom:12px; background:#f8f9fb; border-radius:6px; }
+    .ticket-comment.own{ border-left-color:#28a745; background:#f3fbf5; }
+    .ticket-comment .comment-html img{ max-width:100%; height:auto; }
+
     .badge-priority-low    { background-color:#28a745; color:#fff; }
     .badge-priority-medium { background-color:#ffc107; color:#212529; }
     .badge-priority-high   { background-color:#fd7e14; color:#fff; }
     .badge-priority-critical { background-color:#dc3545; color:#fff; }
-    .ticket-comment { border-left: 4px solid #007bff; padding: 10px 15px; margin-bottom:12px; background:#f8f9fa; border-radius:4px; }
-    .ticket-comment.own { border-left-color: #28a745; }
-    .timeline-item .timeline-body { white-space: pre-wrap; }
   </style>
 </head>
 <body class="hold-transition sidebar-mini layout-fixed">
@@ -176,10 +236,29 @@
             </a>
           </li>
           <% if (user.role === 'admin') { %>
+          <li class="nav-header text-uppercase" style="font-size:.72rem;letter-spacing:.05em;">Master Data</li>
           <li class="nav-item">
             <a href="/users" class="nav-link">
               <i class="nav-icon fas fa-users-cog"></i>
               <p>Pengguna</p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="/categories" class="nav-link">
+              <i class="nav-icon fas fa-tags"></i>
+              <p>Kategori</p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="/priorities" class="nav-link">
+              <i class="nav-icon fas fa-flag"></i>
+              <p>Prioritas</p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="/audit" class="nav-link">
+              <i class="nav-icon fas fa-history"></i>
+              <p>Audit Log</p>
             </a>
           </li>
           <% } %>
@@ -230,9 +309,9 @@
   </footer>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.6.2/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/admin-lte/3.2.0/js/adminlte.min.js"></script>
+<script src="/vendor/jquery/jquery.min.js"></script>
+<script src="/vendor/bootstrap/bootstrap.bundle.min.js"></script>
+<script src="/vendor/adminlte/adminlte.min.js"></script>
 
 <!-- Toast container -->
 <div id="notif-toasts" style="position:fixed;top:64px;right:16px;z-index:9999;width:320px;pointer-events:none;"></div>

@@ -1,65 +1,84 @@
-<div class="card shadow-sm">
-  <div class="card-header border-0">
-    <h3 class="card-title font-weight-bold">
-      <i class="fas fa-users-cog text-primary mr-2"></i>Manajemen Pengguna
-    </h3>
-    <div class="card-tools">
-      <a href="/users/create" class="btn btn-primary btn-sm">
-        <i class="fas fa-user-plus mr-1"></i> Tambah Pengguna
-      </a>
+<%
+  const roleMap = {
+    admin:      { c:'danger',  t:'Admin' },
+    supervisor: { c:'warning', t:'Supervisor' },
+    technician: { c:'info',    t:'Technician' },
+    reporter:   { c:'success', t:'Reporter' }
+  };
+%>
+
+<div class="card">
+  <div class="card-header pro-head d-flex flex-wrap align-items-center py-3">
+    <div class="mr-auto">
+      <h3 class="card-title font-weight-bold mb-0" style="font-size:1.15rem;">
+        <i class="fas fa-users-cog mr-2"></i>Manajemen Pengguna
+      </h3>
+      <div class="pro-sub mt-1"><%= users.length %> pengguna terdaftar</div>
     </div>
+    <a href="/users/create" class="btn btn-light btn-sm shadow-sm">
+      <i class="fas fa-user-plus mr-1"></i> Tambah Pengguna
+    </a>
   </div>
+
   <div class="card-body p-0">
     <div class="table-responsive">
       <table class="table table-hover mb-0">
-        <thead class="thead-light">
+        <thead>
           <tr>
-            <th width="40">#</th>
-            <th>Username</th>
-            <th>Nama</th>
+            <th style="width:46px;">#</th>
+            <th>Pengguna</th>
             <th>Email</th>
-            <th width="110">Role</th>
-            <th width="90">Status</th>
-            <th width="110">Terdaftar</th>
-            <th width="100">Aksi</th>
+            <th style="width:120px;">Role</th>
+            <th style="width:100px;">Status</th>
+            <th style="width:120px;">Terdaftar</th>
+            <th style="width:110px;" class="text-center">Aksi</th>
           </tr>
         </thead>
         <tbody>
-          <% users.forEach((u, i) => { %>
-          <tr class="<%= !u.is_active ? 'table-secondary' : '' %>">
+          <% users.forEach((u, i) => {
+               const r = roleMap[u.role] || { c:'secondary', t:u.role };
+          %>
+          <tr class="<%= !u.is_active ? 'text-muted' : '' %>">
             <td><%= i + 1 %></td>
             <td>
-              <code><%= u.username %></code>
-              <% if (u.id === user.id) { %>
-              <span class="badge badge-light text-muted ml-1">Anda</span>
-              <% } %>
+              <div class="d-flex align-items-center">
+                <img class="avatar-xs"
+                     src="https://ui-avatars.com/api/?name=<%= encodeURIComponent(u.name || u.username) %>&size=32&background=<%= u.is_active ? '2f5597' : 'adb5bd' %>&color=fff"
+                     alt="">
+                <div>
+                  <div class="font-weight-bold" style="line-height:1.1;">
+                    <%= u.name %>
+                    <% if (u.id === user.id) { %>
+                    <span class="badge badge-light border text-muted ml-1" style="font-size:.62rem;">Anda</span>
+                    <% } %>
+                  </div>
+                  <small class="text-muted" style="font-family:monospace;">@<%= u.username %></small>
+                </div>
+              </div>
             </td>
-            <td><%= u.name %></td>
             <td><small><%= u.email %></small></td>
+            <td><span class="badge badge-soft badge-<%= r.c %>"><%= r.t %></span></td>
             <td>
-              <span class="badge badge-<%= u.role === 'admin' ? 'danger' : u.role === 'technician' ? 'info' : 'success' %> text-capitalize">
-                <%= u.role %>
-              </span>
-            </td>
-            <td>
-              <span class="badge badge-<%= u.is_active ? 'success' : 'secondary' %>">
-                <%= u.is_active ? 'Aktif' : 'Nonaktif' %>
+              <span class="badge badge-soft badge-<%= u.is_active ? 'success' : 'secondary' %>">
+                <i class="fas <%= u.is_active ? 'fa-check-circle' : 'fa-ban' %> mr-1"></i><%= u.is_active ? 'Aktif' : 'Nonaktif' %>
               </span>
             </td>
             <td><small><%= new Date(u.created_at).toLocaleDateString('id-ID') %></small></td>
-            <td>
-              <a href="/users/<%= u.id %>/edit" class="btn btn-xs btn-warning" title="Edit">
-                <i class="fas fa-edit"></i>
-              </a>
-              <% if (u.id !== user.id) { %>
-              <form action="/users/<%= u.id %>?_method=DELETE" method="POST" class="d-inline"
-                    onsubmit="return confirm('Nonaktifkan pengguna <%= u.username %>?')">
-                <button type="submit" class="btn btn-xs btn-<%= u.is_active ? 'danger' : 'secondary' %>"
-                        title="<%= u.is_active ? 'Nonaktifkan' : 'Sudah Nonaktif' %>">
-                  <i class="fas fa-user-slash"></i>
-                </button>
-              </form>
-              <% } %>
+            <td class="text-center">
+              <div class="btn-group" role="group">
+                <a href="/users/<%= u.id %>/edit" class="btn btn-sm btn-outline-warning" title="Edit">
+                  <i class="fas fa-edit"></i>
+                </a>
+                <% if (u.id !== user.id) { %>
+                <form action="/users/<%= u.id %>?_method=DELETE" method="POST" class="d-inline"
+                      onsubmit="return confirm('Nonaktifkan pengguna <%= u.username %>?')">
+                  <button type="submit" class="btn btn-sm btn-outline-<%= u.is_active ? 'danger' : 'secondary' %>"
+                          title="<%= u.is_active ? 'Nonaktifkan' : 'Sudah Nonaktif' %>">
+                    <i class="fas fa-user-slash"></i>
+                  </button>
+                </form>
+                <% } %>
+              </div>
             </td>
           </tr>
           <% }) %>
@@ -67,7 +86,7 @@
       </table>
     </div>
     <div class="card-footer text-muted small">
-      Total: <strong><%= users.length %></strong> pengguna
+      Total: <strong class="text-dark"><%= users.length %></strong> pengguna
     </div>
   </div>
 </div>

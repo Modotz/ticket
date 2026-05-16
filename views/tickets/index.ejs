@@ -1,11 +1,72 @@
-<div class="card shadow-sm">
-  <div class="card-header border-0">
-    <h3 class="card-title font-weight-bold">
-      <i class="fas fa-ticket-alt text-primary mr-2"></i>Daftar Tiket
-    </h3>
-    <div class="card-tools">
+<%
+  const pMap = {
+    low:      { c: 'success',   i: 'fa-angle-down',   t: 'Low' },
+    medium:   { c: 'info',      i: 'fa-equals',       t: 'Medium' },
+    high:     { c: 'warning',   i: 'fa-angle-up',     t: 'High' },
+    critical: { c: 'danger',    i: 'fa-fire',         t: 'Critical' }
+  };
+  const sMap = {
+    open:        { c: 'secondary', t: 'Open' },
+    assigned:    { c: 'info',      t: 'Assigned' },
+    in_progress: { c: 'primary',   t: 'In Progress' },
+    resolved:    { c: 'success',   t: 'Resolved' },
+    closed:      { c: 'dark',      t: 'Closed' }
+  };
+  const ef = {};
+  ['status','priority','search','date_from','date_to'].forEach(k => { if (filters[k]) ef[k] = filters[k]; });
+  const exportQS = new URLSearchParams(ef).toString();
+  const hasFilter = Object.keys(ef).length > 0;
+%>
+
+<style>
+  .tkt-card { border: 0; border-radius: .6rem; overflow: hidden; }
+  .tkt-head { background: linear-gradient(135deg,#2f5597,#1f3a6b); color:#fff; }
+  .tkt-head .tkt-sub { color: rgba(255,255,255,.75); font-size: .8rem; }
+  .tkt-filter { background:#f8fafc; }
+  .tkt-filter label { font-size:.72rem; text-transform:uppercase; letter-spacing:.04em;
+                      color:#8392a5; font-weight:600; margin-bottom:.25rem; }
+  .tbl-tkt { margin-bottom:0; }
+  .tbl-tkt thead th { font-size:.7rem; letter-spacing:.05em; text-transform:uppercase;
+                      color:#6c757d; background:#f1f4f8; border-top:0;
+                      border-bottom:2px solid #e3e8ef; white-space:nowrap; }
+  .tbl-tkt td, .tbl-tkt th { vertical-align:middle; }
+  .tbl-tkt tbody tr { transition:background .12s; }
+  .tbl-tkt tbody tr:hover { background:#f4f9ff; }
+  .tkt-no { font-family:SFMono-Regular,Menlo,Consolas,monospace; font-size:.78rem;
+            font-weight:600; color:#2f5597; text-decoration:none; }
+  .tkt-no:hover { text-decoration:underline; }
+  .tkt-title { color:#1f2d3d; font-weight:600; }
+  .tkt-title:hover { color:#2f5597; }
+  .badge-soft { font-weight:600; font-size:.7rem; padding:.35em .6em; border-radius:50rem; }
+  .badge-dot { width:7px; height:7px; border-radius:50%; display:inline-block; margin-right:5px; }
+  .avatar-xs { width:24px; height:24px; border-radius:50%; object-fit:cover;
+               margin-right:6px; vertical-align:middle; }
+  .act-group .btn { padding:.2rem .45rem; }
+  .filter-chip { background:#e9f2ff; color:#2f5597; border-radius:50rem;
+                 font-size:.72rem; padding:.2rem .6rem; margin-right:.35rem; }
+  .sla-bar { height:7px; background:#e9ecef; border-radius:50rem; overflow:hidden; margin:3px 0; }
+  .sla-bar-fill { height:100%; border-radius:50rem; transition:width .4s ease; }
+</style>
+
+<div class="card tkt-card shadow-sm">
+
+  <!-- Header -->
+  <div class="card-header tkt-head d-flex flex-wrap align-items-center py-3">
+    <div class="mr-auto">
+      <h3 class="card-title font-weight-bold mb-0" style="font-size:1.15rem;">
+        <i class="fas fa-ticket-alt mr-2"></i>Daftar Tiket
+      </h3>
+      <div class="tkt-sub mt-1">
+        <%= tickets.length %> tiket<% if (hasFilter) { %> · hasil terfilter<% } %>
+      </div>
+    </div>
+    <div class="mt-2 mt-md-0">
+      <a href="/tickets/export<%= exportQS ? '?' + exportQS : '' %>"
+         class="btn btn-success btn-sm shadow-sm <%= tickets.length === 0 ? 'disabled' : '' %>">
+        <i class="fas fa-file-excel mr-1"></i> Export Excel
+      </a>
       <% if (user.role === 'admin' || user.role === 'reporter' || user.role === 'supervisor') { %>
-      <a href="/tickets/create" class="btn btn-primary btn-sm">
+      <a href="/tickets/create" class="btn btn-light btn-sm shadow-sm ml-1">
         <i class="fas fa-plus mr-1"></i> Buat Tiket
       </a>
       <% } %>
@@ -13,117 +74,189 @@
   </div>
 
   <!-- Filter -->
-  <div class="card-body border-bottom pb-3">
+  <div class="card-body tkt-filter border-bottom py-3">
     <form method="GET" action="/tickets">
-      <div class="row align-items-end">
-        <div class="col-md-3 mb-2">
-          <label class="small text-muted mb-1">Status</label>
+      <div class="form-row align-items-end">
+        <div class="col-md-2 mb-2">
+          <label>Status</label>
           <select name="status" class="form-control form-control-sm">
-            <option value="">Semua Status</option>
-            <% ['open','assigned','in_progress','resolved','closed'].forEach(s => { %>
-            <option value="<%= s %>" <%= filters.status === s ? 'selected' : '' %>><%= s.replace('_',' ').toUpperCase() %></option>
+            <option value="">Semua</option>
+            <% Object.keys(sMap).forEach(s => { %>
+            <option value="<%= s %>" <%= filters.status === s ? 'selected' : '' %>><%= sMap[s].t %></option>
             <% }) %>
           </select>
         </div>
         <div class="col-md-2 mb-2">
-          <label class="small text-muted mb-1">Prioritas</label>
+          <label>Prioritas</label>
           <select name="priority" class="form-control form-control-sm">
             <option value="">Semua</option>
-            <% ['low','medium','high','critical'].forEach(p => { %>
-            <option value="<%= p %>" <%= filters.priority === p ? 'selected' : '' %>><%= p.toUpperCase() %></option>
+            <% Object.keys(pMap).forEach(p => { %>
+            <option value="<%= p %>" <%= filters.priority === p ? 'selected' : '' %>><%= pMap[p].t %></option>
             <% }) %>
           </select>
         </div>
-        <div class="col-md-4 mb-2">
-          <label class="small text-muted mb-1">Cari</label>
-          <input type="text" name="search" class="form-control form-control-sm"
-                 placeholder="Judul atau nomor tiket..." value="<%= filters.search || '' %>">
+        <div class="col-md-2 mb-2">
+          <label>Dari Tanggal <span class="text-muted" style="text-transform:none;">(opsional)</span></label>
+          <input type="date" name="date_from" class="form-control form-control-sm"
+                 value="<%= filters.date_from || '' %>">
         </div>
         <div class="col-md-2 mb-2">
-          <button type="submit" class="btn btn-secondary btn-sm btn-block">
-            <i class="fas fa-search mr-1"></i> Filter
-          </button>
+          <label>Sampai Tanggal <span class="text-muted" style="text-transform:none;">(opsional)</span></label>
+          <input type="date" name="date_to" class="form-control form-control-sm"
+                 value="<%= filters.date_to || '' %>">
         </div>
-        <div class="col-md-1 mb-2">
-          <a href="/tickets" class="btn btn-light btn-sm btn-block" title="Reset">
-            <i class="fas fa-redo"></i>
-          </a>
+        <div class="col-md-2 mb-2">
+          <label>Cari</label>
+          <input type="text" name="search" class="form-control form-control-sm"
+                 placeholder="Judul / no. tiket" value="<%= filters.search || '' %>">
+        </div>
+        <div class="col-md-2 mb-2">
+          <div class="btn-group btn-block" role="group">
+            <button type="submit" class="btn btn-primary btn-sm">
+              <i class="fas fa-filter mr-1"></i> Filter
+            </button>
+            <a href="/tickets" class="btn btn-outline-secondary btn-sm" title="Reset filter">
+              <i class="fas fa-redo"></i>
+            </a>
+          </div>
         </div>
       </div>
+      <% if (hasFilter) { %>
+      <div class="mt-1">
+        <% if (filters.status)   { %><span class="filter-chip">Status: <%= sMap[filters.status] ? sMap[filters.status].t : filters.status %></span><% } %>
+        <% if (filters.priority) { %><span class="filter-chip">Prioritas: <%= pMap[filters.priority] ? pMap[filters.priority].t : filters.priority %></span><% } %>
+        <% if (filters.date_from){ %><span class="filter-chip">Dari: <%= filters.date_from %></span><% } %>
+        <% if (filters.date_to)  { %><span class="filter-chip">Sampai: <%= filters.date_to %></span><% } %>
+        <% if (filters.search)   { %><span class="filter-chip">Cari: "<%= filters.search %>"</span><% } %>
+      </div>
+      <% } %>
     </form>
   </div>
 
+  <!-- Tabel -->
   <div class="card-body p-0">
     <div class="table-responsive">
-      <table class="table table-hover table-bordered mb-0">
-        <thead class="thead-light">
+      <table class="table tbl-tkt">
+        <thead>
           <tr>
-            <th width="150">No. Tiket</th>
+            <th style="width:160px;">No. Tiket</th>
             <th>Judul</th>
-            <th width="130">Kategori</th>
-            <th width="100">Prioritas</th>
-            <th width="120">Status</th>
-            <th width="120">Pembuat</th>
-            <th width="120">Teknisi</th>
-            <th width="100">Tanggal</th>
-            <th width="100">Aksi</th>
+            <th style="width:140px;">Kategori</th>
+            <th style="width:120px;">Prioritas</th>
+            <th style="width:130px;">Status</th>
+            <th style="width:170px;">Progres SLA</th>
+            <th style="width:150px;">Pembuat</th>
+            <th style="width:150px;">Teknisi</th>
+            <th style="width:110px;">Tanggal</th>
+            <th style="width:120px;" class="text-center">Aksi</th>
           </tr>
         </thead>
         <tbody>
           <% if (tickets.length === 0) { %>
           <tr>
-            <td colspan="9" class="text-center text-muted py-5">
-              <i class="fas fa-search fa-2x mb-2 d-block"></i>
-              Tidak ada tiket ditemukan
+            <td colspan="10" class="text-center text-muted py-5">
+              <i class="fas fa-inbox fa-3x mb-3 d-block text-light"></i>
+              <span class="font-weight-bold">Tidak ada tiket ditemukan</span><br>
+              <small><% if (hasFilter) { %>Coba ubah atau reset filter di atas.<% } else { %>Belum ada tiket yang dibuat.<% } %></small>
             </td>
           </tr>
           <% } %>
-          <% tickets.forEach(ticket => { %>
+          <% tickets.forEach(ticket => {
+               const p = pMap[ticket.priority] || { c:'secondary', i:'fa-circle', t:ticket.priority };
+               const s = sMap[ticket.status]   || { c:'secondary', t:ticket.status };
+          %>
           <tr>
-            <td><code class="text-primary"><%= ticket.ticket_number %></code></td>
             <td>
-              <a href="/tickets/<%= ticket.id %>" class="text-dark font-weight-bold">
-                <%= ticket.title.length > 50 ? ticket.title.substring(0,50)+'...' : ticket.title %>
+              <a href="/tickets/<%= ticket.id %>" class="tkt-no"><%= ticket.ticket_number %></a>
+            </td>
+            <td>
+              <a href="/tickets/<%= ticket.id %>" class="tkt-title d-block text-truncate"
+                 style="max-width:340px;" title="<%= ticket.title %>">
+                <%= ticket.title %>
               </a>
             </td>
-            <td><small class="badge badge-light border"><%= ticket.category %></small></td>
             <td>
-              <span class="badge badge-<%= ticket.priority === 'critical' ? 'danger' : ticket.priority === 'high' ? 'warning' : ticket.priority === 'medium' ? 'info' : 'secondary' %>">
-                <%= ticket.priority.toUpperCase() %>
+              <span class="badge badge-light border text-muted"><%= ticket.category %></span>
+            </td>
+            <td>
+              <span class="badge badge-soft badge-<%= p.c %>">
+                <i class="fas <%= p.i %> mr-1"></i><%= p.t.toUpperCase() %>
               </span>
             </td>
             <td>
-              <% const sClass = {open:'secondary',assigned:'info',in_progress:'primary',resolved:'success',closed:'dark'}; %>
-              <span class="badge badge-<%= sClass[ticket.status] || 'secondary' %>">
-                <%= ticket.status.replace('_',' ').toUpperCase() %>
+              <span class="badge badge-soft badge-<%= s.c %>">
+                <span class="badge-dot bg-light"></span><%= s.t.toUpperCase() %>
               </span>
             </td>
-            <td><small><%= ticket.creator_name %></small></td>
-            <td><small><% if (ticket.assignee_name) { %><%= ticket.assignee_name %><% } else { %><span class="text-muted">-</span><% } %></small></td>
-            <td><small><%= new Date(ticket.created_at).toLocaleDateString('id-ID') %></small></td>
             <td>
-              <a href="/tickets/<%= ticket.id %>" class="btn btn-xs btn-info" title="Detail">
-                <i class="fas fa-eye"></i>
-              </a>
-              <% if (user.role === 'admin') { %>
-              <a href="/tickets/<%= ticket.id %>/edit" class="btn btn-xs btn-warning" title="Edit">
-                <i class="fas fa-edit"></i>
-              </a>
-              <form action="/tickets/<%= ticket.id %>?_method=DELETE" method="POST" class="d-inline"
-                    onsubmit="return confirm('Hapus tiket <%= ticket.ticket_number %>?')">
-                <button type="submit" class="btn btn-xs btn-danger" title="Hapus">
-                  <i class="fas fa-trash"></i>
-                </button>
-              </form>
+              <% const sla = ticket.sla || { state:'none' }; %>
+              <% if (sla.state === 'none') { %>
+              <small class="text-muted"><i class="fas fa-minus-circle mr-1"></i>SLA belum diatur</small>
+              <% } else { %>
+              <div class="sla-wrap">
+                <div class="d-flex justify-content-between align-items-center" style="font-size:.68rem;">
+                  <span class="text-muted">Target: <%= sla.target %></span>
+                  <span class="font-weight-bold text-<%= sla.color %>"><%= sla.pct %>%</span>
+                </div>
+                <div class="sla-bar">
+                  <div class="sla-bar-fill bg-<%= sla.color %>" style="width:<%= sla.pct %>%;"></div>
+                </div>
+                <small class="text-<%= sla.color %>" style="font-size:.66rem;">
+                  <i class="fas <%= sla.state==='breach'||sla.state==='done_late' ? 'fa-exclamation-triangle' : sla.state==='done_ok' ? 'fa-check-circle' : 'fa-clock' %> mr-1"></i><%= sla.label %>
+                </small>
+              </div>
               <% } %>
+            </td>
+            <td class="text-truncate" style="max-width:150px;">
+              <img class="avatar-xs"
+                   src="https://ui-avatars.com/api/?name=<%= encodeURIComponent(ticket.creator_name || '?') %>&size=24&background=2f5597&color=fff"
+                   alt="">
+              <small><%= ticket.creator_name || '-' %></small>
+            </td>
+            <td class="text-truncate" style="max-width:150px;">
+              <% if (ticket.assignee_name) { %>
+              <img class="avatar-xs"
+                   src="https://ui-avatars.com/api/?name=<%= encodeURIComponent(ticket.assignee_name) %>&size=24&background=6c757d&color=fff"
+                   alt="">
+              <small><%= ticket.assignee_name %></small>
+              <% } else { %>
+              <small class="text-muted"><i class="fas fa-user-slash mr-1"></i>Belum ada</small>
+              <% } %>
+            </td>
+            <td>
+              <small class="d-block"><%= new Date(ticket.created_at).toLocaleDateString('id-ID') %></small>
+              <small class="text-muted" style="font-size:.68rem;"><%= timeAgo(ticket.created_at) %></small>
+            </td>
+            <td class="text-center">
+              <div class="btn-group act-group" role="group">
+                <a href="/tickets/<%= ticket.id %>" class="btn btn-sm btn-outline-info" title="Detail">
+                  <i class="fas fa-eye"></i>
+                </a>
+                <% if (user.role === 'admin') { %>
+                <a href="/tickets/<%= ticket.id %>/edit" class="btn btn-sm btn-outline-warning" title="Edit">
+                  <i class="fas fa-edit"></i>
+                </a>
+                <form action="/tickets/<%= ticket.id %>?_method=DELETE" method="POST" class="d-inline"
+                      onsubmit="return confirm('Hapus tiket <%= ticket.ticket_number %>? Tindakan ini tidak dapat dibatalkan.')">
+                  <button type="submit" class="btn btn-sm btn-outline-danger" title="Hapus">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </form>
+                <% } %>
+              </div>
             </td>
           </tr>
           <% }) %>
         </tbody>
       </table>
     </div>
-    <div class="card-footer text-muted small">
-      Total: <strong><%= tickets.length %></strong> tiket
+    <div class="card-footer d-flex justify-content-between align-items-center text-muted small bg-white">
+      <span>Total: <strong class="text-dark"><%= tickets.length %></strong> tiket</span>
+      <% if (tickets.length > 0) { %>
+      <a href="/tickets/export<%= exportQS ? '?' + exportQS : '' %>" class="text-success">
+        <i class="fas fa-download mr-1"></i>Unduh sebagai Excel
+      </a>
+      <% } %>
     </div>
   </div>
 </div>

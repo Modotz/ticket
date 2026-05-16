@@ -1,9 +1,12 @@
 const bcrypt = require('bcryptjs');
 const { getDb } = require('../config/database');
+const audit = require('../helpers/audit');
+const { validatePassword } = require('../helpers/password');
+const { normalizePhone } = require('../helpers/whatsapp');
 
 exports.index = (req, res) => {
   const db = getDb();
-  const users = db.prepare('SELECT id, username, name, email, role, is_active, created_at FROM users ORDER BY created_at DESC').all();
+  const users = db.prepare('SELECT id, username, name, email, phone, telegram_chat_id, role, is_active, created_at FROM users ORDER BY created_at DESC').all();
   res.render('users/index', { title: 'Manajemen Pengguna', users });
 };
 
@@ -13,10 +16,17 @@ exports.createPage = (req, res) => {
 
 exports.create = (req, res) => {
   const { username, name, email, password, role } = req.body;
+  const phone = normalizePhone(req.body.phone);
+  const tg = (req.body.telegram_chat_id || '').trim() || null;
   const db = getDb();
 
   if (!username || !name || !email || !password || !role) {
     req.flash('error', 'Semua field wajib diisi');
+    return res.redirect('/users/create');
+  }
+  const pwErr = validatePassword(password);
+  if (pwErr) {
+    req.flash('error', pwErr);
     return res.redirect('/users/create');
   }
 
@@ -27,8 +37,9 @@ exports.create = (req, res) => {
   }
 
   const hashed = bcrypt.hashSync(password, 10);
-  db.prepare('INSERT INTO users (username, name, email, password, role) VALUES (?,?,?,?,?)')
-    .run(username, name, email, hashed, role);
+  const r = db.prepare('INSERT INTO users (username, name, email, phone, telegram_chat_id, password, role) VALUES (?,?,?,?,?,?,?)')
+    .run(username, name, email, phone || null, tg, hashed, role);
+  audit.log(req, 'user_created', 'user', r.lastInsertRowid, `${username} (${role})`);
 
   req.flash('success', `Pengguna ${name} berhasil ditambahkan`);
   res.redirect('/users');
@@ -36,7 +47,7 @@ exports.create = (req, res) => {
 
 exports.editPage = (req, res) => {
   const db = getDb();
-  const editUser = db.prepare('SELECT id, username, name, email, role, is_active FROM users WHERE id = ?').get(req.params.id);
+  const editUser = db.prepare('SELECT id, username, name, email, phone, telegram_chat_id, role, is_active FROM users WHERE id = ?').get(req.params.id);
   if (!editUser) {
     req.flash('error', 'Pengguna tidak ditemukan');
     return res.redirect('/users');
@@ -46,16 +57,24 @@ exports.editPage = (req, res) => {
 
 exports.update = (req, res) => {
   const { name, email, role, is_active, password } = req.body;
+  const phone = normalizePhone(req.body.phone);
+  const tg = (req.body.telegram_chat_id || '').trim() || null;
   const db = getDb();
 
   if (password && password.trim()) {
+    const pwErr = validatePassword(password);
+    if (pwErr) {
+      req.flash('error', pwErr);
+      return res.redirect(`/users/${req.params.id}/edit`);
+    }
     const hashed = bcrypt.hashSync(password, 10);
-    db.prepare('UPDATE users SET name=?, email=?, role=?, is_active=?, password=? WHERE id=?')
-      .run(name, email, role, is_active ? 1 : 0, hashed, req.params.id);
+    db.prepare('UPDATE users SET name=?, email=?, phone=?, telegram_chat_id=?, role=?, is_active=?, password=? WHERE id=?')
+      .run(name, email, phone || null, tg, role, is_active ? 1 : 0, hashed, req.params.id);
   } else {
-    db.prepare('UPDATE users SET name=?, email=?, role=?, is_active=? WHERE id=?')
-      .run(name, email, role, is_active ? 1 : 0, req.params.id);
+    db.prepare('UPDATE users SET name=?, email=?, phone=?, telegram_chat_id=?, role=?, is_active=? WHERE id=?')
+      .run(name, email, phone || null, tg, role, is_active ? 1 : 0, req.params.id);
   }
+  audit.log(req, 'user_updated', 'user', req.params.id, name);
 
   req.flash('success', 'Data pengguna berhasil diperbarui');
   res.redirect('/users');
@@ -68,6 +87,7 @@ exports.deleteUser = (req, res) => {
     return res.redirect('/users');
   }
   db.prepare('UPDATE users SET is_active = 0 WHERE id = ?').run(req.params.id);
+  audit.log(req, 'user_deactivated', 'user', req.params.id, null);
   req.flash('success', 'Pengguna berhasil dinonaktifkan');
   res.redirect('/users');
 };

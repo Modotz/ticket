@@ -1,10 +1,24 @@
-<div class="row justify-content-center">
-  <div class="col-md-8">
-    <div class="card card-primary shadow">
-      <div class="card-header">
+<link rel="stylesheet" href="/vendor/summernote/summernote-bs4.min.css">
+<link rel="stylesheet" href="/vendor/dropzone/dropzone.min.css">
+<style>
+  #ticket-dropzone {
+    border: 2px dashed #c3cdd6; border-radius: 6px; background: #f8fafc;
+    min-height: 140px; padding: 18px;
+  }
+  #ticket-dropzone .dz-message { margin: 1.2em 0; color: #6c757d; }
+  #ticket-dropzone.dz-drag-hover { border-color: #007bff; background: #eef5ff; }
+</style>
+
+<div class="row">
+  <div class="col-12">
+    <div class="card shadow">
+      <div class="card-header pro-head py-3">
         <h3 class="card-title"><i class="fas fa-plus-circle mr-2"></i>Buat Tiket Kendala Baru</h3>
       </div>
-      <form action="/tickets" method="POST">
+      <!-- Sengaja BUKAN <form>: pengiriman lewat fetch(). Tanpa elemen form,
+           tidak ada submit native sehingga error "TEXTAREA ... implicitly
+           closed" dari Summernote mustahil terjadi. -->
+      <div id="ticket-form">
         <div class="card-body">
 
           <div class="form-group">
@@ -16,8 +30,21 @@
 
           <div class="form-group">
             <label class="font-weight-bold">Deskripsi Lengkap <span class="text-danger">*</span></label>
-            <textarea name="description" class="form-control" rows="6"
-                      placeholder="Jelaskan kendala secara detail: gejala yang dialami, kapan terjadi, dampak yang ditimbulkan, dll." required></textarea>
+            <textarea name="description" id="ticket-desc" class="form-control" rows="6"
+                      placeholder="Jelaskan kendala secara detail: gejala yang dialami, kapan terjadi, dampak yang ditimbulkan, dll."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="font-weight-bold">Lampiran / Screenshot</label>
+            <div id="ticket-dropzone" class="dz-clickable">
+              <div class="dz-message" data-dz-message>
+                <i class="fas fa-cloud-upload-alt fa-2x mb-2 d-block text-primary"></i>
+                Tarik file ke sini, klik untuk memilih, atau <b>tempel screenshot (Ctrl+V)</b>
+              </div>
+            </div>
+            <small class="text-muted">
+              Maks 10MB/file &bull; Maks 10 file &bull; Gambar, PDF, DOC, XLS, TXT, ZIP &bull; Opsional
+            </small>
           </div>
 
           <div class="row">
@@ -36,26 +63,198 @@
               <div class="form-group">
                 <label class="font-weight-bold">Prioritas <span class="text-danger">*</span></label>
                 <select name="priority" class="form-control" required>
-                  <option value="low">🟢 Low — Tidak Mendesak</option>
-                  <option value="medium" selected>🟡 Medium — Perlu Ditangani</option>
-                  <option value="high">🟠 High — Segera Tangani</option>
-                  <option value="critical">🔴 Critical — DARURAT!</option>
+                  <% priorities.forEach(p => { %>
+                  <option value="<%= p.code %>" <%= p.code === 'medium' ? 'selected' : '' %>>
+                    <%= p.name %> — target <%= p.duration_value %> <%= p.duration_unit %>
+                  </option>
+                  <% }) %>
                 </select>
-                <small class="text-muted">Pilih sesuai tingkat urgensi</small>
+                <small class="text-muted">Target waktu penyelesaian mengikuti master prioritas</small>
               </div>
             </div>
           </div>
 
         </div>
-        <div class="card-footer d-flex justify-content-between">
-          <button type="submit" class="btn btn-primary">
-            <i class="fas fa-paper-plane mr-1"></i> Kirim Tiket
-          </button>
+        <div class="card-footer d-flex justify-content-between align-items-center">
           <a href="/tickets" class="btn btn-secondary">
             <i class="fas fa-times mr-1"></i> Batal
           </a>
+          <button type="button" class="btn btn-primary ml-auto" id="ticket-submit">
+            <i class="fas fa-paper-plane mr-1"></i> Kirim Tiket
+          </button>
         </div>
-      </form>
+      </div>
     </div>
   </div>
 </div>
+
+<script>
+(function () {
+  // Penanda versi — buka Console (F12). Kalau baris ini TIDAK muncul,
+  // berarti browser masih memakai halaman lama (cache) → reload keras.
+  console.log('%c[BuatTiket] mode=FETCH-NOFORM v5 ' + new Date().toISOString(),
+              'color:#fff;background:#28a745;padding:2px 6px;border-radius:3px');
+
+  var box = document.getElementById('ticket-form'); // <div>, BUKAN <form>
+  var dz = null;        // instance Dropzone (null bila gagal/ tak ada file)
+  var snReady = false;  // true bila Summernote berhasil init
+
+  // Ambil nilai field berdasarkan atribut name di dalam container.
+  function val(name) {
+    var el = box.querySelector('[name="' + name + '"]');
+    return el ? el.value : '';
+  }
+
+  function loadScript(src, cb) {
+    var s = document.createElement('script');
+    s.src = src;
+    s.onload = function () { cb(null); };
+    s.onerror = function () { cb(new Error('Gagal memuat ' + src)); };
+    document.head.appendChild(s);
+  }
+
+  function resetSubmitBtn() {
+    var btn = document.getElementById('ticket-submit');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-paper-plane mr-1"></i> Kirim Tiket';
+  }
+
+  function descCode() {
+    if (snReady && window.jQuery) return window.jQuery('#ticket-desc').summernote('code');
+    return document.getElementById('ticket-desc').value;
+  }
+
+  // ── Kirim via fetch saat tombol diklik (tidak ada elemen <form>) ──
+  document.getElementById('ticket-submit').addEventListener('click', function () {
+    var code  = descCode();
+    var plain = String(code).replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+
+    if (!val('title').trim()) { alert('Judul kendala wajib diisi'); return; }
+    if (!plain) {
+      alert('Deskripsi lengkap wajib diisi');
+      if (snReady && window.jQuery) window.jQuery('#ticket-desc').summernote('focus');
+      return;
+    }
+    if (!val('category')) { alert('Kategori wajib dipilih'); return; }
+
+    var btn = document.getElementById('ticket-submit');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Mengirim...';
+
+    var fd = new FormData();
+    fd.append('title', val('title'));
+    fd.append('description', code);
+    fd.append('category', val('category'));
+    fd.append('priority', val('priority'));
+    if (dz) {
+      dz.getAcceptedFiles().forEach(function (f) { fd.append('files', f, f.name); });
+    }
+
+    fetch('/tickets', {
+      method: 'POST',
+      body: fd,
+      credentials: 'same-origin',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+      .then(function (r) {
+        return r.json().then(function (d) { return { ok: r.ok, d: d }; })
+                        .catch(function () { return { ok: r.ok, d: {} }; });
+      })
+      .then(function (res) {
+        if (res.ok) {
+          window.location.href = (res.d && res.d.redirect) || '/tickets';
+        } else {
+          alert((res.d && res.d.error) || 'Gagal menyimpan tiket');
+          resetSubmitBtn();
+        }
+      })
+      .catch(function () {
+        alert('Gagal menghubungi server. Coba lagi.');
+        resetSubmitBtn();
+      });
+  });
+
+  // ── Muat plugin (jQuery/Bootstrap ada di bawah layout) ────────────
+  function boot() {
+    if (!window.jQuery || !window.jQuery.fn || !window.jQuery.fn.modal) {
+      return setTimeout(boot, 50);
+    }
+    var $ = window.jQuery;
+
+    loadScript('/vendor/summernote/summernote-bs4.min.js', function (errSn) {
+      if (!errSn) {
+        try {
+          $('#ticket-desc').summernote({
+            placeholder: 'Jelaskan kendala secara detail: gejala, kapan terjadi, dampak, dll.',
+            height: 240,
+            toolbar: [
+              ['style', ['style']],
+              ['font', ['bold', 'italic', 'underline', 'strikethrough', 'superscript', 'subscript', 'clear']],
+              ['fontname', ['fontname']],
+              ['fontsize', ['fontsize']],
+              ['color', ['color']],
+              ['para', ['ul', 'ol', 'paragraph']],
+              ['height', ['height']],
+              ['table', ['table']],
+              ['insert', ['link', 'picture', 'video', 'hr']],
+              ['view', ['fullscreen', 'codeview', 'help']]
+            ]
+          });
+          snReady = true;
+        } catch (_) { snReady = false; }
+      }
+
+      loadScript('/vendor/dropzone/dropzone.min.js', function (errDz) {
+        if (errDz || !window.Dropzone) return;       // form tetap jalan tanpa Dropzone
+        window.Dropzone.autoDiscover = false;
+        try {
+          dz = new window.Dropzone('#ticket-dropzone', {
+            url: '/tickets',
+            paramName: 'files',
+            method: 'post',
+            maxFiles: 10,
+            maxFilesize: 10,
+            uploadMultiple: true,
+            parallelUploads: 20,
+            autoProcessQueue: false,
+            addRemoveLinks: true,
+            acceptedFiles: 'image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip',
+            dictRemoveFile: 'Hapus',
+            dictMaxFilesExceeded: 'Maksimal 10 file',
+            dictFileTooBig: 'File terlalu besar (maks 10MB)',
+            dictInvalidFileType: 'Tipe file tidak didukung'
+          });
+        } catch (_) { dz = null; return; }
+
+        // Dropzone hanya sebagai pemilih file; pengiriman lewat fetch.
+        dz.on('error', function (file, msg) {
+          alert(typeof msg === 'string' ? msg : (msg && msg.error) || 'File ditolak');
+          resetSubmitBtn();
+        });
+
+        // Tempel (paste) gambar dari clipboard → tambah ke Dropzone
+        window.addEventListener('paste', function (e) {
+          if (!dz) return;
+          var items = (e.clipboardData || window.clipboardData || {}).items || [];
+          for (var i = 0; i < items.length; i++) {
+            if (items[i].kind === 'file') {
+              var blob = items[i].getAsFile();
+              if (!blob) continue;
+              if (!blob.name) {
+                try {
+                  Object.defineProperty(blob, 'name', {
+                    value: 'tempel-' + Date.now() + '.png', writable: false
+                  });
+                } catch (_) {}
+              }
+              dz.addFile(blob);
+            }
+          }
+        });
+      });
+    });
+  }
+
+  boot();
+})();
+</script>

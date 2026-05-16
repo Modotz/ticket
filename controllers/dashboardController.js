@@ -1,4 +1,5 @@
 const { getDb } = require('../config/database');
+const { computeSla } = require('../helpers/sla');
 
 exports.index = (req, res) => {
   const db = getDb();
@@ -7,10 +8,12 @@ exports.index = (req, res) => {
   let recentTickets = [];
 
   const baseJoin = `
-    SELECT t.*, u1.name as creator_name, u2.name as assignee_name
+    SELECT t.*, u1.name as creator_name, u2.name as assignee_name,
+           p.duration_value as sla_value, p.duration_unit as sla_unit
     FROM tickets t
     LEFT JOIN users u1 ON t.created_by = u1.id
     LEFT JOIN users u2 ON t.assigned_to = u2.id
+    LEFT JOIN priorities p ON p.code = t.priority
   `;
 
   if (user.role === 'admin') {
@@ -49,6 +52,8 @@ exports.index = (req, res) => {
     };
     recentTickets = db.prepare(baseJoin + ' WHERE t.assigned_to = ? ORDER BY t.created_at DESC LIMIT 10').all(user.id);
   }
+
+  recentTickets = recentTickets.map(t => ({ ...t, sla: computeSla(t) }));
 
   res.render('dashboard/index', { title: 'Dashboard', stats, recentTickets });
 };

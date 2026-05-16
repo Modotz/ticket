@@ -1,5 +1,56 @@
 const { getDb } = require('../config/database');
 const sse = require('./sseManager');
+const { sendMail } = require('./mailer');
+const { sendWA } = require('./whatsapp');
+const { sendTelegram } = require('./telegram');
+
+const TYPE_SUBJECT = {
+  ticket_created:   'Tiket Baru',
+  ticket_assigned:  'Penugasan Tiket',
+  comment_added:    'Komentar Baru',
+  status_changed:   'Perubahan Status Tiket',
+  attachment_added: 'Lampiran Baru',
+  sla_escalation:   'PERINGATAN SLA Tiket'
+};
+
+function toPlain(html) {
+  return String(html || '').replace(/<[^>]*>/g, '').replace(/&nbsp;/gi, ' ').trim();
+}
+
+// Kirim email + WhatsApp ke penerima (async, best-effort, tak memblok).
+function dispatchExternal(userIds, ticketId, type, message) {
+  try {
+    const db = getDb();
+    const appUrl = (process.env.APP_URL || '').replace(/\/$/, '');
+    const link = appUrl
+      ? `${appUrl}/tickets/${ticketId || ''}`.replace(/\/$/, '')
+      : '';
+    const subject = `[Ticket TSJ] ${TYPE_SUBJECT[type] || 'Notifikasi'}`;
+    const plain = toPlain(message);
+
+    const rows = db.prepare(
+      `SELECT email, phone, telegram_chat_id, name FROM users WHERE id IN (${userIds.map(() => '?').join(',')})`
+    ).all(...userIds);
+
+    const waText = `*${TYPE_SUBJECT[type] || 'Notifikasi'}*\n${plain}${link ? `\n\n${link}` : ''}`;
+    const tgText = `${TYPE_SUBJECT[type] || 'Notifikasi'}\n${plain}${link ? `\n\n${link}` : ''}`;
+
+    rows.forEach(u => {
+      if (u.telegram_chat_id) sendTelegram(u.telegram_chat_id, tgText);
+      if (u.email) {
+        const html = `<div style="font-family:Arial,sans-serif;font-size:14px;color:#222">
+          <p>Halo ${u.name || ''},</p>
+          <p>${message}</p>
+          ${link ? `<p><a href="${link}" style="background:#2f5597;color:#fff;padding:8px 16px;border-radius:4px;text-decoration:none">Buka Tiket</a></p>` : ''}
+          <hr><small style="color:#888">Email otomatis dari Ticket TSJ.</small></div>`;
+        sendMail(u.email, subject, html);
+      }
+      if (u.phone) sendWA(u.phone, waText);
+    });
+  } catch (e) {
+    console.warn('[notif] dispatchExternal error:', e.message);
+  }
+}
 
 function getAdminIds() {
   return getDb()
@@ -29,6 +80,9 @@ function notify(userIds, ticketId, type, message, exceptUserId) {
     const count = countStmt.get(uid).c;
     sse.pushToUser(uid, { type, message, ticket_id: ticketId, count });
   });
+
+  // Email + WhatsApp (async, tidak memblok response)
+  setImmediate(() => dispatchExternal(unique, ticketId, type, message));
 }
 
 // ── Helpers per event ────────────────────────────────────────────
@@ -121,10 +175,24 @@ function onAttachmentAdded(ticket, uploaderName, fileCount, actorId) {
   );
 }
 
+// Eskalasi SLA: beri tahu admin/teknisi tiket yang lewat tenggat.
+function onSlaEscalation(ticket) {
+  const recipients = [ticket.assigned_to, ...getAdminIds()];
+  notify(
+    recipients,
+    ticket.id,
+    'sla_escalation',
+    `Tiket <strong>${ticket.ticket_number}</strong> <em>LEWAT SLA</em> dan belum selesai: ${ticket.title}`,
+    null
+  );
+}
+
 module.exports = {
+  notify,
   onTicketCreated,
   onTicketAssigned,
   onCommentAdded,
   onStatusChanged,
-  onAttachmentAdded
+  onAttachmentAdded,
+  onSlaEscalation
 };

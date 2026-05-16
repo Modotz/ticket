@@ -42,64 +42,102 @@
   </div>
 </div>
 
+<%
+  const pMap = {
+    low:{c:'success',i:'fa-angle-down',t:'Low'}, medium:{c:'info',i:'fa-equals',t:'Medium'},
+    high:{c:'warning',i:'fa-angle-up',t:'High'}, critical:{c:'danger',i:'fa-fire',t:'Critical'}
+  };
+  const sMap = {
+    open:{c:'secondary',t:'Open'}, assigned:{c:'info',t:'Assigned'},
+    in_progress:{c:'primary',t:'In Progress'}, resolved:{c:'success',t:'Resolved'}, closed:{c:'dark',t:'Closed'}
+  };
+%>
+
 <!-- Recent Tickets -->
-<div class="card shadow-sm">
-  <div class="card-header border-0">
-    <h3 class="card-title font-weight-bold">
-      <i class="fas fa-list-alt text-primary mr-2"></i>Tiket Terbaru
-    </h3>
-    <div class="card-tools">
-      <a href="/tickets" class="btn btn-sm btn-outline-primary">
-        <i class="fas fa-external-link-alt mr-1"></i> Lihat Semua
-      </a>
+<div class="card">
+  <div class="card-header pro-head d-flex flex-wrap align-items-center py-3">
+    <div class="mr-auto">
+      <h3 class="card-title font-weight-bold mb-0" style="font-size:1.1rem;">
+        <i class="fas fa-list-alt mr-2"></i>Tiket Terbaru
+      </h3>
+      <div class="pro-sub mt-1"><%= recentTickets.length %> tiket terbaru</div>
     </div>
+    <a href="/tickets" class="btn btn-light btn-sm shadow-sm">
+      <i class="fas fa-external-link-alt mr-1"></i> Lihat Semua
+    </a>
   </div>
   <div class="card-body p-0">
     <div class="table-responsive">
       <table class="table table-hover mb-0">
-        <thead class="thead-light">
+        <thead>
           <tr>
             <th>No. Tiket</th>
             <th>Judul</th>
             <th>Kategori</th>
             <th>Prioritas</th>
             <th>Status</th>
+            <th style="width:170px;">Progres SLA</th>
             <% if (user.role !== 'reporter') { %><th>Pembuat</th><% } %>
             <% if (user.role !== 'technician') { %><th>Teknisi</th><% } %>
             <th>Tanggal</th>
-            <th></th>
+            <th class="text-center">Aksi</th>
           </tr>
         </thead>
         <tbody>
           <% if (recentTickets.length === 0) { %>
           <tr>
-            <td colspan="8" class="text-center text-muted py-4">
-              <i class="fas fa-inbox fa-2x mb-2 d-block"></i> Belum ada tiket
+            <td colspan="10" class="text-center text-muted py-5">
+              <i class="fas fa-inbox fa-3x mb-3 d-block text-light"></i>
+              <span class="font-weight-bold">Belum ada tiket</span><br>
+              <small>Tiket terbaru akan tampil di sini.</small>
             </td>
           </tr>
           <% } %>
-          <% recentTickets.forEach(ticket => { %>
+          <% recentTickets.forEach(ticket => {
+               const p = pMap[ticket.priority] || {c:'secondary',i:'fa-circle',t:ticket.priority};
+               const s = sMap[ticket.status]   || {c:'secondary',t:ticket.status};
+          %>
           <tr>
-            <td><code class="text-primary"><%= ticket.ticket_number %></code></td>
-            <td><%= ticket.title.length > 40 ? ticket.title.substring(0,40)+'...' : ticket.title %></td>
-            <td><small class="badge badge-light border"><%= ticket.category %></small></td>
+            <td><a href="/tickets/<%= ticket.id %>" class="font-weight-bold text-primary"
+                   style="font-family:monospace;font-size:.78rem;"><%= ticket.ticket_number %></a></td>
             <td>
-              <% const pClass = {low:'success',medium:'warning',high:'orange',critical:'danger'}; %>
-              <span class="badge badge-<%= ticket.priority === 'high' ? 'warning' : ticket.priority === 'critical' ? 'danger' : ticket.priority === 'medium' ? 'info' : 'secondary' %>">
-                <%= ticket.priority.toUpperCase() %>
-              </span>
+              <a href="/tickets/<%= ticket.id %>" class="text-dark font-weight-600 d-inline-block text-truncate"
+                 style="max-width:280px;" title="<%= ticket.title %>"><%= ticket.title %></a>
             </td>
+            <td><span class="badge badge-light border text-muted"><%= ticket.category %></span></td>
             <td>
-              <% const sClass = {open:'secondary',assigned:'info',in_progress:'primary',resolved:'success',closed:'dark'}; %>
-              <span class="badge badge-<%= sClass[ticket.status] || 'secondary' %>">
-                <%= ticket.status.replace('_',' ').toUpperCase() %>
-              </span>
+              <span class="badge badge-soft badge-<%= p.c %>"><i class="fas <%= p.i %> mr-1"></i><%= p.t.toUpperCase() %></span>
             </td>
-            <% if (user.role !== 'reporter') { %><td><%= ticket.creator_name %></td><% } %>
-            <% if (user.role !== 'technician') { %><td><% if (ticket.assignee_name) { %><%= ticket.assignee_name %><% } else { %><span class="text-muted">-</span><% } %></td><% } %>
-            <td><small><%= new Date(ticket.created_at).toLocaleDateString('id-ID') %></small></td>
+            <td><span class="badge badge-soft badge-<%= s.c %>"><%= s.t.toUpperCase() %></span></td>
             <td>
-              <a href="/tickets/<%= ticket.id %>" class="btn btn-xs btn-info">
+              <% const sla = ticket.sla || { state:'none' }; %>
+              <% if (sla.state === 'none') { %>
+              <small class="text-muted"><i class="fas fa-minus-circle mr-1"></i>SLA belum diatur</small>
+              <% } else { %>
+              <div class="sla-wrap">
+                <div class="d-flex justify-content-between align-items-center" style="font-size:.68rem;">
+                  <span class="text-muted">Target: <%= sla.target %></span>
+                  <span class="font-weight-bold text-<%= sla.color %>"><%= sla.pct %>%</span>
+                </div>
+                <div class="sla-bar">
+                  <div class="sla-bar-fill bg-<%= sla.color %>" style="width:<%= sla.pct %>%;"></div>
+                </div>
+                <small class="text-<%= sla.color %>" style="font-size:.66rem;">
+                  <i class="fas <%= sla.state==='breach'||sla.state==='done_late' ? 'fa-exclamation-triangle' : sla.state==='done_ok' ? 'fa-check-circle' : 'fa-clock' %> mr-1"></i><%= sla.label %>
+                </small>
+              </div>
+              <% } %>
+            </td>
+            <% if (user.role !== 'reporter') { %><td><small><%= ticket.creator_name %></small></td><% } %>
+            <% if (user.role !== 'technician') { %>
+            <td><small><% if (ticket.assignee_name) { %><%= ticket.assignee_name %><% } else { %><span class="text-muted">—</span><% } %></small></td>
+            <% } %>
+            <td>
+              <small class="d-block"><%= new Date(ticket.created_at).toLocaleDateString('id-ID') %></small>
+              <small class="text-muted" style="font-size:.68rem;"><%= timeAgo(ticket.created_at) %></small>
+            </td>
+            <td class="text-center">
+              <a href="/tickets/<%= ticket.id %>" class="btn btn-xs btn-outline-info" title="Detail">
                 <i class="fas fa-eye"></i>
               </a>
             </td>

@@ -1,7 +1,7 @@
 <div class="row justify-content-center">
   <div class="col-md-6">
-    <div class="card card-warning shadow">
-      <div class="card-header">
+    <div class="card shadow">
+      <div class="card-header pro-head py-3">
         <h3 class="card-title"><i class="fas fa-user-edit mr-2"></i>Edit Pengguna: <strong><%= editUser.name %></strong></h3>
       </div>
       <form action="/users/<%= editUser.id %>?_method=PUT" method="POST">
@@ -24,10 +24,24 @@
           </div>
 
           <div class="form-group">
+            <label class="font-weight-bold">No. WhatsApp</label>
+            <input type="text" name="phone" class="form-control"
+                   value="<%= editUser.phone || '' %>" placeholder="08xxxxxxxxxx" maxlength="20">
+            <small class="text-muted">Opsional. Untuk notifikasi WhatsApp.</small>
+          </div>
+
+          <div class="form-group">
+            <label class="font-weight-bold">Telegram Chat ID</label>
+            <input type="text" name="telegram_chat_id" class="form-control"
+                   value="<%= editUser.telegram_chat_id || '' %>" placeholder="mis. 123456789" maxlength="32">
+            <small class="text-muted">Opsional. Untuk notifikasi Telegram.</small>
+          </div>
+
+          <div class="form-group">
             <label class="font-weight-bold">Password Baru</label>
             <input type="password" name="password" class="form-control"
-                   minlength="6" placeholder="Kosongkan jika tidak ingin mengubah password">
-            <small class="text-muted">Isi hanya jika ingin mengganti password</small>
+                   minlength="8" placeholder="Kosongkan jika tidak ingin mengubah password">
+            <small class="text-muted">Isi hanya jika ingin mengganti. Min 8 karakter, ada huruf & angka.</small>
           </div>
 
           <div class="form-group">

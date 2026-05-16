@@ -1,13 +1,15 @@
+<link rel="stylesheet" href="/vendor/summernote/summernote-bs4.min.css">
+
 <div class="row justify-content-center">
   <div class="col-md-8">
-    <div class="card card-warning shadow">
-      <div class="card-header">
+    <div class="card shadow">
+      <div class="card-header pro-head py-3">
         <h3 class="card-title">
           <i class="fas fa-edit mr-2"></i>Edit Tiket
           <code class="ml-2"><%= ticket.ticket_number %></code>
         </h3>
       </div>
-      <form action="/tickets/<%= ticket.id %>?_method=PUT" method="POST">
+      <form action="/tickets/<%= ticket.id %>?_method=PUT" method="POST" id="ticket-edit-form">
         <div class="card-body">
 
           <div class="form-group">
@@ -18,7 +20,7 @@
 
           <div class="form-group">
             <label class="font-weight-bold">Deskripsi <span class="text-danger">*</span></label>
-            <textarea name="description" class="form-control" rows="5" required><%= ticket.description %></textarea>
+            <textarea name="description" id="ticket-desc" class="form-control" rows="5"><%- ticket.description %></textarea>
           </div>
 
           <div class="row">
@@ -36,10 +38,11 @@
               <div class="form-group">
                 <label class="font-weight-bold">Prioritas <span class="text-danger">*</span></label>
                 <select name="priority" class="form-control" required>
-                  <option value="low"      <%= ticket.priority === 'low'      ? 'selected' : '' %>>Low</option>
-                  <option value="medium"   <%= ticket.priority === 'medium'   ? 'selected' : '' %>>Medium</option>
-                  <option value="high"     <%= ticket.priority === 'high'     ? 'selected' : '' %>>High</option>
-                  <option value="critical" <%= ticket.priority === 'critical' ? 'selected' : '' %>>Critical</option>
+                  <% priorities.forEach(p => { %>
+                  <option value="<%= p.code %>" <%= ticket.priority === p.code ? 'selected' : '' %>>
+                    <%= p.name %> — target <%= p.duration_value %> <%= p.duration_unit %>
+                  </option>
+                  <% }) %>
                 </select>
               </div>
             </div>
@@ -53,15 +56,64 @@
           </div>
 
         </div>
-        <div class="card-footer d-flex justify-content-between">
-          <button type="submit" class="btn btn-warning">
-            <i class="fas fa-save mr-1"></i> Simpan Perubahan
-          </button>
+        <div class="card-footer d-flex justify-content-between align-items-center">
           <a href="/tickets/<%= ticket.id %>" class="btn btn-secondary">
             <i class="fas fa-arrow-left mr-1"></i> Kembali
           </a>
+          <button type="submit" class="btn btn-warning ml-auto">
+            <i class="fas fa-save mr-1"></i> Simpan Perubahan
+          </button>
         </div>
       </form>
     </div>
   </div>
 </div>
+
+<script>
+// Tunggu jQuery/Bootstrap (dimuat di bawah layout) sebelum init Summernote.
+(function () {
+  function boot() {
+    if (!window.jQuery || !window.jQuery.fn || !window.jQuery.fn.modal) {
+      return setTimeout(boot, 50);
+    }
+    var $ = window.jQuery;
+    var js = document.createElement('script');
+    js.src = '/vendor/summernote/summernote-bs4.min.js';
+    js.onload = function () {
+      $('#ticket-desc').summernote({
+        placeholder: 'Jelaskan kendala secara detail...',
+        height: 220,
+        toolbar: [
+          ['style', ['style']],
+          ['font', ['bold', 'italic', 'underline', 'strikethrough', 'superscript', 'subscript', 'clear']],
+          ['fontname', ['fontname']],
+          ['fontsize', ['fontsize']],
+          ['color', ['color']],
+          ['para', ['ul', 'ol', 'paragraph']],
+          ['height', ['height']],
+          ['table', ['table']],
+          ['insert', ['link', 'picture', 'video', 'hr']],
+          ['view', ['fullscreen', 'codeview', 'help']]
+        ]
+      });
+
+      $('#ticket-edit-form').on('submit', function (e) {
+        var code  = $('#ticket-desc').summernote('code');
+        var plain = code.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+        if (!plain) {
+          e.preventDefault();
+          alert('Deskripsi wajib diisi');
+          $('#ticket-desc').summernote('focus');
+          return;
+        }
+        // Hancurkan Summernote sebelum form benar-benar terkirim agar
+        // <textarea> code-view tak bernama tidak ikut & ditolak Chrome.
+        $('#ticket-desc').summernote('destroy');
+        document.getElementById('ticket-desc').value = code;
+      });
+    };
+    document.head.appendChild(js);
+  }
+  boot();
+})();
+</script>
