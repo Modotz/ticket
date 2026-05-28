@@ -3,11 +3,77 @@ const { getDb } = require('../config/database');
 const audit = require('../helpers/audit');
 const { validatePassword } = require('../helpers/password');
 const { normalizePhone } = require('../helpers/whatsapp');
+const ExcelJS = require('exceljs');
+
+const ROLE_LABEL = { admin:'Admin', supervisor:'Supervisor', technician:'Technician', reporter:'Reporter' };
 
 exports.index = (req, res) => {
   const db = getDb();
   const users = db.prepare('SELECT id, username, name, email, phone, telegram_chat_id, role, is_active, created_at FROM users ORDER BY created_at DESC').all();
   res.render('users/index', { title: 'Manajemen Pengguna', users });
+};
+
+exports.exportExcel = async (req, res) => {
+  const db = getDb();
+  const users = db.prepare(
+    'SELECT username, name, email, phone, telegram_chat_id, role, is_active, created_at FROM users ORDER BY created_at DESC'
+  ).all();
+
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'Ticket TSJ';
+  wb.created = new Date();
+  const ws = wb.addWorksheet('Pengguna', { views: [{ state: 'frozen', ySplit: 1 }] });
+  ws.columns = [
+    { header: 'No.',         key: 'no',       width: 6  },
+    { header: 'Username',    key: 'username', width: 20 },
+    { header: 'Nama',        key: 'name',     width: 28 },
+    { header: 'Email',       key: 'email',    width: 32 },
+    { header: 'WhatsApp',    key: 'phone',    width: 18 },
+    { header: 'Telegram ID', key: 'telegram', width: 16 },
+    { header: 'Role',        key: 'role',     width: 14 },
+    { header: 'Status',      key: 'status',   width: 12 },
+    { header: 'Terdaftar',   key: 'created',  width: 20 }
+  ];
+
+  const head = ws.getRow(1);
+  head.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+  head.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2F5597' } };
+  head.alignment = { vertical: 'middle', horizontal: 'center' };
+  head.height = 22;
+  ws.autoFilter = 'A1:I1';
+
+  users.forEach((u, i) => {
+    ws.addRow({
+      no: i + 1,
+      username: u.username,
+      name: u.name,
+      email: u.email,
+      phone: u.phone || '-',
+      telegram: u.telegram_chat_id || '-',
+      role: ROLE_LABEL[u.role] || u.role,
+      status: u.is_active ? 'Aktif' : 'Nonaktif',
+      created: u.created_at ? new Date(u.created_at).toLocaleString('id-ID') : '-'
+    });
+  });
+
+  ws.eachRow({ includeEmpty: false }, row => {
+    row.eachCell(cell => {
+      cell.border = {
+        top:    { style: 'thin', color: { argb: 'FFD9D9D9' } },
+        bottom: { style: 'thin', color: { argb: 'FFD9D9D9' } },
+        left:   { style: 'thin', color: { argb: 'FFD9D9D9' } },
+        right:  { style: 'thin', color: { argb: 'FFD9D9D9' } }
+      };
+    });
+  });
+
+  const stamp = new Date().toISOString().slice(0, 10);
+  res.setHeader('Content-Type',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="daftar-pengguna-${stamp}.xlsx"`);
+  await wb.xlsx.write(res);
+  res.end();
+  audit.log(req, 'users_exported', 'user', null, `${users.length} pengguna`);
 };
 
 exports.createPage = (req, res) => {

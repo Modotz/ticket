@@ -99,12 +99,27 @@ function generateTicketNumber() {
 exports.index = (req, res) => {
   const db = getDb();
   const { query, params, filters } = buildTicketListQuery(req.session.user, req.query);
-  const tickets = db.prepare(query).all(...params).map(t => ({ ...t, sla: computeSla(t) }));
+
+  // Hitung total (pakai query yg sama, ganti SELECT ... FROM → COUNT(*), buang ORDER BY)
+  const countSql = query
+    .replace(/SELECT[\s\S]*?FROM/i, 'SELECT COUNT(*) AS c FROM')
+    .replace(/\s+ORDER BY[\s\S]*$/i, '');
+  const total = db.prepare(countSql).get(...params).c;
+
+  const perPage = 25;
+  const totalPages = Math.max(1, Math.ceil(total / perPage));
+  const page = Math.min(totalPages, Math.max(1, parseInt(req.query.page, 10) || 1));
+  const offset = (page - 1) * perPage;
+
+  const tickets = db.prepare(query + ' LIMIT ? OFFSET ?')
+    .all(...params, perPage, offset)
+    .map(t => ({ ...t, sla: computeSla(t) }));
 
   res.render('tickets/index', {
     title: 'Daftar Tiket',
     tickets,
-    filters
+    filters,
+    pagination: { page, totalPages, total, perPage, offset }
   });
 };
 

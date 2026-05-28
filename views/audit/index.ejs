@@ -12,6 +12,19 @@
     category_created:{c:'success',i:'fa-tag'}, category_updated:{c:'info',i:'fa-tag'}, category_deleted:{c:'danger',i:'fa-tag'},
     priority_created:{c:'success',i:'fa-flag'}, priority_updated:{c:'info',i:'fa-flag'}, priority_deleted:{c:'danger',i:'fa-flag'}
   };
+  // Pagination helpers
+  const ef = {};
+  ['action','q','date_from','date_to'].forEach(k => { if (filters[k]) ef[k] = filters[k]; });
+  const pageUrl = (n) => { const u = new URLSearchParams(ef); u.set('page', n); return '/audit?' + u.toString(); };
+  const pag = typeof pagination !== 'undefined' ? pagination
+              : { page:1, totalPages:1, total: logs.length, perPage: logs.length, offset:0 };
+  const showFrom = pag.total === 0 ? 0 : pag.offset + 1;
+  const showTo   = Math.min(pag.offset + logs.length, pag.total);
+  function pageWindow(cur, last) {
+    const s = new Set([1, last, cur, cur-1, cur-2, cur+1, cur+2]);
+    return [...s].filter(n => n >= 1 && n <= last).sort((a,b)=>a-b);
+  }
+  const windowPages = pageWindow(pag.page, pag.totalPages);
 %>
 
 <div class="card">
@@ -20,7 +33,7 @@
       <h3 class="card-title font-weight-bold mb-0" style="font-size:1.15rem;">
         <i class="fas fa-history mr-2"></i>Audit Log
       </h3>
-      <div class="pro-sub mt-1"><%= logs.length %> aktivitas terbaru (maks 500)</div>
+      <div class="pro-sub mt-1"><%= pag.total %> aktivitas tercatat</div>
     </div>
   </div>
 
@@ -89,8 +102,42 @@
         </tbody>
       </table>
     </div>
-    <div class="card-footer text-muted small">
-      Menampilkan <strong class="text-dark"><%= logs.length %></strong> catatan terakhir.
+    <div class="card-footer bg-white">
+      <div class="d-flex flex-wrap justify-content-between align-items-center text-muted small mb-2">
+        <span>
+          Menampilkan
+          <strong class="text-dark"><%= showFrom %></strong>–<strong class="text-dark"><%= showTo %></strong>
+          dari <strong class="text-dark"><%= pag.total %></strong> catatan
+          <% if (pag.totalPages > 1) { %> · Halaman <strong class="text-dark"><%= pag.page %></strong>/<%= pag.totalPages %><% } %>
+        </span>
+      </div>
+
+      <% if (pag.totalPages > 1) { %>
+      <nav>
+        <ul class="pagination pagination-sm mb-0 justify-content-end">
+          <li class="page-item <%= pag.page <= 1 ? 'disabled' : '' %>">
+            <a class="page-link" href="<%= pageUrl(pag.page - 1) %>" aria-label="Sebelumnya">
+              <i class="fas fa-chevron-left"></i>
+            </a>
+          </li>
+          <% let prev = 0; %>
+          <% windowPages.forEach(n => { %>
+            <% if (n - prev > 1) { %>
+            <li class="page-item disabled"><span class="page-link">…</span></li>
+            <% } %>
+            <li class="page-item <%= n === pag.page ? 'active' : '' %>">
+              <a class="page-link" href="<%= pageUrl(n) %>"><%= n %></a>
+            </li>
+            <% prev = n; %>
+          <% }) %>
+          <li class="page-item <%= pag.page >= pag.totalPages ? 'disabled' : '' %>">
+            <a class="page-link" href="<%= pageUrl(pag.page + 1) %>" aria-label="Berikutnya">
+              <i class="fas fa-chevron-right"></i>
+            </a>
+          </li>
+        </ul>
+      </nav>
+      <% } %>
     </div>
   </div>
 </div>

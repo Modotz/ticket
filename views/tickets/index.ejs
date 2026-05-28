@@ -16,6 +16,24 @@
   ['status','priority','search','date_from','date_to'].forEach(k => { if (filters[k]) ef[k] = filters[k]; });
   const exportQS = new URLSearchParams(ef).toString();
   const hasFilter = Object.keys(ef).length > 0;
+
+  // Helper URL pagination: pertahankan semua filter yang aktif.
+  const pageUrl = (n) => {
+    const p = new URLSearchParams(ef);
+    p.set('page', n);
+    return '/tickets?' + p.toString();
+  };
+  const pag = typeof pagination !== 'undefined' ? pagination
+              : { page:1, totalPages:1, total: tickets.length, perPage: tickets.length, offset:0 };
+  const showFrom = pag.total === 0 ? 0 : pag.offset + 1;
+  const showTo   = Math.min(pag.offset + tickets.length, pag.total);
+
+  // Daftar nomor halaman (jendela ±2 di sekitar halaman aktif)
+  function pageWindow(cur, last) {
+    const set = new Set([1, last, cur, cur-1, cur-2, cur+1, cur+2]);
+    return [...set].filter(n => n >= 1 && n <= last).sort((a,b)=>a-b);
+  }
+  const windowPages = pageWindow(pag.page, pag.totalPages);
 %>
 
 <style>
@@ -250,12 +268,46 @@
         </tbody>
       </table>
     </div>
-    <div class="card-footer d-flex justify-content-between align-items-center text-muted small bg-white">
-      <span>Total: <strong class="text-dark"><%= tickets.length %></strong> tiket</span>
-      <% if (tickets.length > 0) { %>
-      <a href="/tickets/export<%= exportQS ? '?' + exportQS : '' %>" class="text-success">
-        <i class="fas fa-download mr-1"></i>Unduh sebagai Excel
-      </a>
+    <div class="card-footer bg-white">
+      <div class="d-flex flex-wrap justify-content-between align-items-center text-muted small mb-2">
+        <span>
+          Menampilkan
+          <strong class="text-dark"><%= showFrom %></strong>–<strong class="text-dark"><%= showTo %></strong>
+          dari <strong class="text-dark"><%= pag.total %></strong> tiket
+          <% if (pag.totalPages > 1) { %> · Halaman <strong class="text-dark"><%= pag.page %></strong>/<%= pag.totalPages %><% } %>
+        </span>
+        <% if (pag.total > 0) { %>
+        <a href="/tickets/export<%= exportQS ? '?' + exportQS : '' %>" class="text-success">
+          <i class="fas fa-download mr-1"></i>Unduh <%= hasFilter ? 'hasil filter' : 'semua' %> sebagai Excel
+        </a>
+        <% } %>
+      </div>
+
+      <% if (pag.totalPages > 1) { %>
+      <nav>
+        <ul class="pagination pagination-sm mb-0 justify-content-end">
+          <li class="page-item <%= pag.page <= 1 ? 'disabled' : '' %>">
+            <a class="page-link" href="<%= pageUrl(pag.page - 1) %>" aria-label="Sebelumnya">
+              <i class="fas fa-chevron-left"></i>
+            </a>
+          </li>
+          <% let prev = 0; %>
+          <% windowPages.forEach(n => { %>
+            <% if (n - prev > 1) { %>
+            <li class="page-item disabled"><span class="page-link">…</span></li>
+            <% } %>
+            <li class="page-item <%= n === pag.page ? 'active' : '' %>">
+              <a class="page-link" href="<%= pageUrl(n) %>"><%= n %></a>
+            </li>
+            <% prev = n; %>
+          <% }) %>
+          <li class="page-item <%= pag.page >= pag.totalPages ? 'disabled' : '' %>">
+            <a class="page-link" href="<%= pageUrl(pag.page + 1) %>" aria-label="Berikutnya">
+              <i class="fas fa-chevron-right"></i>
+            </a>
+          </li>
+        </ul>
+      </nav>
       <% } %>
     </div>
   </div>
